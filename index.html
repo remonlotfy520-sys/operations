@@ -1,19 +1,1984 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<!-- build 2026-11-25 23:23 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>إدارة العمليات</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<style>
+:root {
+  --bg: #f4f6f9; --card: #fff; --ink: #1c2430; --ink2: #5a6575; --muted: #8a94a3; --line: #e3e8ef;
+  --pri: #0f6e8c; --pri-2: #e6f2f6; --pri-ink: #fff; --ok: #1e7b4f; --ok-bg: #e5f4ec;
+  --warn: #a5560f; --warn-bg: #fcefe1; --bad: #b42323; --bad-bg: #fbe8e8; --bar: #2a8aab;
+  --r: 12px; --shadow: 0 1px 3px rgba(20,30,50,.08);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif; font-size: 15px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.loading { padding: 60px; text-align: center; color: var(--ink2); }
+
+/* Header */
+.top { position: sticky; top: 0; z-index: 20; background: var(--pri); color: #fff; box-shadow: var(--shadow); }
+.top-row { display: flex; align-items: center; gap: 10px; padding: 8px 14px; max-width: 1200px; margin: auto; }
+.top h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .who { font-size: 13px; opacity: .9; }
+.top .ghost { background: rgba(255,255,255,.15); border: 0; color: #fff; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.tabs { display: flex; gap: 4px; padding: 0 10px; max-width: 1200px; margin: auto; overflow-x: auto; scrollbar-width: none; }
+.tabs button { background: none; border: 0; color: rgba(255,255,255,.8); padding: 9px 12px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; font-weight: 600; }
+.tabs button.on { color: #fff; border-bottom-color: #fff; }
+.demo-bar { background: var(--warn-bg); color: var(--warn); text-align: center; font-size: 13px; padding: 5px; }
+
+main { max-width: 1200px; margin: auto; padding: 14px; }
+.card { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px; margin-bottom: 12px; }
+.card h3 { margin: 0 0 10px; font-size: 15px; color: var(--pri); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field > label, .lbl { font-size: 13px; color: var(--ink2); font-weight: 600; }
+.req::after { content: ' *'; color: var(--bad); }
+input[type=text], input[type=password], input[type=date], input[type=time], input[type=search], select, textarea {
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: #fff; width: 100%; min-height: 42px;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--pri); outline-offset: -1px; border-color: var(--pri); }
+textarea { min-height: 70px; resize: vertical; }
+.hint { font-size: 12px; color: var(--muted); }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 14px; cursor: pointer; min-height: 38px; }
+.chip.on { background: var(--pri); border-color: var(--pri); color: #fff; font-weight: 600; }
+.chip.on.ok { background: var(--ok); border-color: var(--ok); }
+.chip.on.bad { background: var(--warn); border-color: var(--warn); }
+
+/* Tag input */
+.tags { position: relative; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.tag { background: var(--pri-2); color: var(--pri); border-radius: 8px; padding: 5px 10px; display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+.tag button { border: 0; background: none; color: var(--pri); cursor: pointer; font-size: 17px; line-height: 1; padding: 0; }
+.tag-row { display: flex; gap: 6px; }
+.sugg { position: absolute; inset-inline: 0; top: 100%; z-index: 15; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); max-height: 260px; overflow: auto; margin-top: 4px; }
+.sugg button { display: block; width: 100%; text-align: start; border: 0; background: none; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.sugg button:hover, .sugg button.active { background: var(--pri-2); }
+.sugg .new { color: var(--pri); font-weight: 600; }
+
+/* Buttons */
+.btn { border: 0; border-radius: 10px; padding: 10px 18px; cursor: pointer; font-weight: 700; background: var(--pri); color: #fff; min-height: 42px; }
+.btn.sec { background: var(--pri-2); color: var(--pri); }
+.btn.danger { background: var(--bad-bg); color: var(--bad); }
+.btn.sm { padding: 6px 12px; min-height: 34px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.save-bar { position: sticky; bottom: 0; background: rgba(244,246,249,.96); padding: 10px 0; display: flex; gap: 8px; z-index: 10; }
+.save-bar .btn { flex: 1; font-size: 16px; }
+.errors { background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+.errors ul { margin: 4px 0 0; padding-inline-start: 18px; }
+
+/* List */
+.filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; align-items: end; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: start; vertical-align: top; }
+th { color: var(--ink2); font-weight: 600; font-size: 13px; background: #fafbfc; position: sticky; top: 0; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: #f8fafc; }
+.badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.bad { background: var(--warn-bg); color: var(--warn); }
+.sub { color: var(--muted); font-size: 12px; }
+.empty { text-align: center; color: var(--muted); padding: 30px; }
+.cards-m { display: none; }
+@media (max-width: 720px) {
+  .table-wrap.resp { display: none; }
+  .cards-m { display: block; }
+  .op-card { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+  .op-card .r1 { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+  main { padding: 10px; }
+}
+.details dl { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; }
+.details dt { color: var(--ink2); font-size: 13px; }
+.details dd { margin: 0; font-weight: 600; }
+
+/* Dashboard */
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.kpi { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 12px 14px; }
+.kpi .v { font-size: 26px; font-weight: 700; }
+.kpi .k { font-size: 13px; color: var(--ink2); }
+.dash { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.dash .card { margin: 0; }
+.bars { display: flex; flex-direction: column; gap: 7px; }
+.bar-row { display: grid; grid-template-columns: minmax(90px, 38%) 1fr 40px; gap: 8px; align-items: center; font-size: 13px; }
+.bar-row .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { height: 14px; background: #eef2f6; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--bar); border-radius: 4px; min-width: 2px; }
+.bar-row .c { text-align: end; font-weight: 700; }
+.bar-row:hover .bar-fill { background: var(--pri); }
+.vchart { display: flex; align-items: flex-end; gap: 2px; height: 160px; border-bottom: 1px solid var(--line); padding-top: 18px; direction: ltr; }
+.vchart .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 4px; position: relative; }
+.vchart .col .b { width: 100%; max-width: 28px; background: var(--bar); border-radius: 4px 4px 0 0; }
+.vchart .col:hover .b { background: var(--pri); }
+.vchart .col .t { font-size: 11px; color: var(--ink2); }
+.vlabels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); direction: ltr; margin-top: 4px; }
+
+/* Settings */
+details.set { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); margin-bottom: 10px; }
+details.set > summary { padding: 13px 14px; cursor: pointer; font-weight: 700; color: var(--pri); list-style: none; display: flex; justify-content: space-between; }
+details.set > summary::after { content: '▾'; }
+details.set[open] > summary::after { content: '▴'; }
+details.set > .in { padding: 0 14px 14px; }
+.le { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.le .item { background: #f1f4f8; border-radius: 8px; padding: 5px 6px 5px 10px; display: inline-flex; align-items: center; gap: 4px; }
+.le .item button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; font-size: 14px; }
+.le .item button.del:hover { color: var(--bad); }
+.le-add { display: flex; gap: 6px; max-width: 480px; }
+.sub-block { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.sub-block h4 { margin: 0 0 8px; font-size: 14px; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.users td, .users th { white-space: nowrap; }
+
+/* Procedure + classification rows */
+.proc-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.proc-row { display: flex; align-items: center; gap: 8px; }
+.proc-row .tag { flex: 1; min-width: 0; }
+.proc-row select { width: auto; min-width: 130px; min-height: 36px; padding: 6px 10px; }
+.proc-row select.need { border-color: var(--bad); background: var(--bad-bg); }
+.proc-row .x { border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 6px; }
+.proc-row .x:hover { color: var(--bad); }
+
+/* Required-fields settings */
+.req-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+.req-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.req-item input { width: 20px; height: 20px; accent-color: var(--pri); }
+.req-item span { flex: 1; }
+.req-item b { font-size: 12px; color: var(--muted); }
+.req-item input:checked ~ b { color: var(--bad); }
+
+/* Login */
+.login { max-width: 380px; margin: 9vh auto; padding: 0 14px; }
+.login .card { padding: 22px; }
+.login h2 { margin: 0 0 4px; color: var(--pri); }
+.login form { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+
+/* Modal / toast */
+.modal { position: fixed; inset: 0; background: rgba(15,25,40,.45); z-index: 50; display: flex; align-items: flex-start; justify-content: center; padding: 5vh 12px; overflow: auto; }
+.modal[hidden] { display: none; }
+.modal-box { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 620px; position: relative; }
+.modal-x { position: absolute; top: 8px; inset-inline-end: 10px; border: 0; background: none; font-size: 26px; cursor: pointer; color: var(--muted); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1c2430; color: #fff; padding: 10px 18px; border-radius: 10px; z-index: 60; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+.toast.err { background: var(--bad); }
+
+/* Print */
+#print { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; font-size: 11px; }
+  #app, .modal, .toast { display: none !important; }
+  #print { display: block; }
+  #print h2 { margin: 0 0 4px; font-size: 16px; }
+  #print .meta { margin-bottom: 8px; color: #444; }
+  #print table { font-size: 10px; }
+  #print th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; position: static; }
+  #print th, #print td { border: 1px solid #999; padding: 4px; }
+  #print h3 { margin: 10px 0 4px; font-size: 13px; }
+  #print tr { page-break-inside: avoid; }
+}
+</style>
 </head>
 <body>
 <div id="app"><div class="loading">جاري التحميل…</div></div>
 <div id="print"></div>
 <div id="modal" class="modal" hidden><div class="modal-box"><button class="modal-x" data-act="close-modal" aria-label="إغلاق">×</button><div id="modal-body"></div></div></div>
 <div id="toast" class="toast" hidden></div>
-<script type="module" src="app.js"></script>
+<script type="module">
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// js/config.js
+var firebaseConfig, USER_EMAIL_DOMAIN;
+var init_config = __esm({
+  "js/config.js"() {
+    firebaseConfig = {
+      apiKey: "AIzaSyBzAupbo1q25wduK3_7oW80lt_EcjxFJSU",
+      authDomain: "operations-4b35a.firebaseapp.com",
+      projectId: "operations-4b35a",
+      storageBucket: "operations-4b35a.firebasestorage.app",
+      messagingSenderId: "170996749916",
+      appId: "1:170996749916:web:a9c4b75e8708a2f0737899"
+    };
+    USER_EMAIL_DOMAIN = "opsapp.local";
+  }
+});
+
+// js/logic.js
+function withDefaults(s) {
+  const out = structuredClone(DEFAULT_SETTINGS);
+  if (!s) return out;
+  for (const k of Object.keys(s)) out[k] = s[k];
+  out.required = { ...DEFAULT_SETTINGS.required, ...s.required || {} };
+  for (const sp of out.specialties) {
+    for (const key of ["consultants", "diagnoses", "procedures"]) {
+      if (!out[key][sp.id]) out[key][sp.id] = [];
+    }
+  }
+  return out;
+}
+function normalizeTerm(s) {
+  return String(s ?? "").replace(/[ً-ٰٟـ]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/\s+/g, " ").trim().toLowerCase();
+}
+function uniqueTerms(list) {
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const t of list) {
+    const clean = String(t ?? "").replace(/\s+/g, " ").trim();
+    const k = normalizeTerm(clean);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(clean);
+  }
+  return out;
+}
+function suggest(list, q, limit = 8, exclude = []) {
+  const nq = normalizeTerm(q);
+  const ex = new Set(exclude.map(normalizeTerm));
+  const pool = uniqueTerms(list).filter((t) => !ex.has(normalizeTerm(t)));
+  if (!nq) return pool.slice(0, limit);
+  const starts = [], contains = [];
+  for (const t of pool) {
+    const n = normalizeTerm(t);
+    if (n.startsWith(nq)) starts.push(t);
+    else if (n.includes(nq)) contains.push(t);
+  }
+  return [...starts, ...contains].slice(0, limit);
+}
+function validateOp(op, settings2) {
+  const e = [];
+  const s = withDefaults(settings2);
+  const r = s.required;
+  const empty = (v) => Array.isArray(v) ? v.length === 0 : !String(v ?? "").trim();
+  if (!op.date) e.push("اختر اليوم");
+  if (r.time && empty(op.time)) e.push("اختر الوقت");
+  if (empty(op.patientName)) e.push("اكتب اسم المريض");
+  if (r.mrn && empty(op.mrn)) e.push("اكتب الرقم الطبي");
+  if (r.specialtyId && empty(op.specialtyId)) e.push("اختر التخصص");
+  if (r.consultant && empty(op.consultant)) e.push("اختر الاستشاري");
+  if (r.anesthetist && empty(op.anesthetist)) e.push("اختر طبيب التخدير");
+  if (r.diagnoses && empty(op.diagnoses)) e.push("أضف تشخيصًا واحدًا على الأقل");
+  if (r.procedures && empty(op.procedures)) e.push("أضف عملية واحدة على الأقل");
+  if ((op.procedures || []).length > MAX_PROCEDURES) e.push(`الحد الأقصى ${MAX_PROCEDURES} عمليات في الحالة`);
+  if (r.procClass && (op.procedures || []).some((_, i) => empty(op.procClasses?.[i]))) e.push("اختر تصنيف كل عملية");
+  const cat2 = s.categories.find((c) => c.id === op.categoryId);
+  if (r.categoryId && !cat2) e.push("اختر نوع العمليات");
+  if (cat2 && op.room && !cat2.rooms.includes(op.room)) e.push("رقم الغرفة لا يتبع نوع العمليات المختار");
+  else if (r.room && empty(op.room)) e.push("اختر رقم الغرفة");
+  if (r.anesthesiaType && empty(op.anesthesiaType)) e.push("اختر نوع التخدير");
+  if (r.finance && empty(op.finance)) e.push("اختر المعاملة المالية");
+  const fin = s.finance.find((f) => f.name === op.finance);
+  if (r.contractEntity && fin && fin.entities && empty(op.contractEntity)) e.push("اختر جهة التعاقد");
+  if (r.company && op.externalCompany && empty(op.company)) e.push("اختر اسم الشركة الخارجية");
+  if (r.supplyType && op.externalCompany && empty(op.supplyType)) e.push("اختر نوع المستلزم");
+  if (r.from && empty(op.from)) e.push("اختر قادم من");
+  if (r.to && empty(op.to)) e.push("اختر خروج إلى");
+  if (r.notes && empty(op.notes)) e.push("اكتب الملاحظات");
+  if (op.status !== "done" && op.status !== "postponed") e.push("حدد: تمت أم تأجيل");
+  if (r.postponeReason && op.status === "postponed" && empty(op.postponeReason)) e.push("اكتب سبب التأجيل");
+  return e;
+}
+function cleanOp(op, settings2) {
+  const s = withDefaults(settings2);
+  const o = { ...op };
+  o.patientName = String(o.patientName || "").replace(/\s+/g, " ").trim();
+  o.mrn = String(o.mrn || "").trim();
+  o.diagnoses = uniqueTerms(o.diagnoses || []);
+  const seen = /* @__PURE__ */ new Set(), procs = [], classes = [];
+  (o.procedures || []).forEach((p, i) => {
+    const clean = String(p ?? "").replace(/\s+/g, " ").trim();
+    const k = normalizeTerm(clean);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    procs.push(clean);
+    classes.push(String(o.procClasses?.[i] ?? ""));
+  });
+  o.procedures = procs;
+  o.procClasses = classes;
+  o.specialty = s.specialties.find((x) => x.id === o.specialtyId)?.name || o.specialty || "";
+  o.category = s.categories.find((x) => x.id === o.categoryId)?.name || "";
+  if (!o.category) o.room = "";
+  if (!o.externalCompany) {
+    o.company = "";
+    o.supplyType = "";
+  }
+  const fin = s.finance.find((f) => f.name === o.finance);
+  if (!fin || !fin.entities) o.contractEntity = "";
+  if (o.status !== "postponed") o.postponeReason = "";
+  o.waitingList = !!o.waitingList;
+  o.externalCompany = !!o.externalCompany;
+  o.notes = String(o.notes || "").trim();
+  return o;
+}
+function count(ops, keyFn) {
+  const m = /* @__PURE__ */ new Map();
+  for (const o of ops) {
+    const keys = [].concat(keyFn(o)).filter((k) => k !== void 0 && k !== null && k !== "");
+    for (const k of keys) m.set(k, (m.get(k) || 0) + 1);
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "ar"));
+}
+function computeStats(ops) {
+  const total = ops.length;
+  const postponed = ops.filter((o) => o.status === "postponed").length;
+  const done = ops.filter((o) => o.status === "done").length;
+  const done_ = ops.filter((o) => o.status === "done");
+  const byDay = count(ops, (o) => o.date).sort((a, b) => a[0].localeCompare(b[0]));
+  const byMonth = count(ops, (o) => (o.date || "").slice(0, 7)).sort((a, b) => a[0].localeCompare(b[0]));
+  return {
+    total,
+    done,
+    postponed,
+    postponeRate: total ? Math.round(postponed / total * 1e3) / 10 : 0,
+    waitingList: ops.filter((o) => o.waitingList).length,
+    externalCompany: ops.filter((o) => o.externalCompany).length,
+    days: byDay.length,
+    byDay,
+    byMonth,
+    bySpecialty: count(done_, (o) => o.specialty),
+    byConsultant: count(done_, (o) => o.consultant),
+    byRoom: count(done_, (o) => o.room),
+    byCategory: count(done_, (o) => o.category),
+    byAnesthesia: count(done_, (o) => o.anesthesiaType),
+    byAnesthetist: count(done_, (o) => o.anesthetist),
+    byFinance: count(done_, (o) => o.finance),
+    byContract: count(done_, (o) => o.contractEntity),
+    byCompany: count(done_.filter((o) => o.externalCompany), (o) => o.company),
+    bySupply: count(done_.filter((o) => o.externalCompany), (o) => o.supplyType),
+    byProcedure: count(done_, (o) => o.procedures || []),
+    byProcClass: count(done_, (o) => o.procClasses || []),
+    byDiagnosis: count(done_, (o) => o.diagnoses || []),
+    postponeReasons: count(ops.filter((o) => o.status === "postponed"), (o) => o.postponeReason),
+    postponedBySpecialty: count(ops.filter((o) => o.status === "postponed"), (o) => o.specialty)
+  };
+}
+function filterOps(ops, f = {}) {
+  const q = normalizeTerm(f.q);
+  return ops.filter((o) => {
+    if (f.from && o.date < f.from) return false;
+    if (f.to && o.date > f.to) return false;
+    if (f.specialtyId && o.specialtyId !== f.specialtyId) return false;
+    if (f.consultant && o.consultant !== f.consultant) return false;
+    if (f.categoryId && o.categoryId !== f.categoryId) return false;
+    if (f.status && o.status !== f.status) return false;
+    if (f.finance && o.finance !== f.finance) return false;
+    if (f.procClass && !(o.procClasses || []).includes(f.procClass)) return false;
+    if (q) {
+      const hay = normalizeTerm([o.patientName, o.mrn, o.consultant, ...o.diagnoses || [], ...o.procedures || []].join(" "));
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+}
+function newTerms(op, settings2, learned2) {
+  const s = withDefaults(settings2);
+  const out = [];
+  for (const [type, key] of [["dx", "diagnoses"], ["op", "procedures"]]) {
+    const known = new Set([
+      ...s[key][op.specialtyId] || [],
+      ...learned2.filter((l) => l.type === type && l.specialtyId === op.specialtyId).map((l) => l.text)
+    ].map(normalizeTerm));
+    for (const t of op[key] || []) {
+      const n = normalizeTerm(t);
+      if (n && !known.has(n)) {
+        known.add(n);
+        out.push({ type, specialtyId: op.specialtyId, text: t });
+      }
+    }
+  }
+  return out;
+}
+function learnedId(t) {
+  const str = `${t.type}|${t.specialtyId}|${normalizeTerm(t.text)}`;
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = (h * 33 ^ str.charCodeAt(i)) >>> 0;
+  return `${t.type}_${t.specialtyId}_${h.toString(36)}`;
+}
+function todayISO(d = /* @__PURE__ */ new Date()) {
+  const z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+function slugId(prefix = "x") {
+  return prefix + "_" + Math.random().toString(36).slice(2, 8);
+}
+function procText(o, sep = " + ") {
+  return (o.procedures || []).map((p, i) => o.procClasses?.[i] ? `${p} (${o.procClasses[i]})` : p).join(sep);
+}
+function toRow(o) {
+  const r = {};
+  for (const [k, label] of EXPORT_COLUMNS) {
+    let v = o[k];
+    if (Array.isArray(v)) v = v.join(" + ");
+    if (k === "externalCompany" || k === "waitingList") v = v ? "نعم" : "لا";
+    if (k === "status") v = v === "done" ? "تمت" : v === "postponed" ? "تأجيل" : "";
+    r[label] = v ?? "";
+  }
+  return r;
+}
+var REQUIRABLE_FIELDS, MAX_PROCEDURES, DEFAULT_SETTINGS, EXPORT_COLUMNS;
+var init_logic = __esm({
+  "js/logic.js"() {
+    REQUIRABLE_FIELDS = [
+      ["time", "الوقت", true],
+      ["mrn", "الرقم الطبي", true],
+      ["specialtyId", "التخصص", true],
+      ["consultant", "الاستشاري", true],
+      ["anesthetist", "طبيب التخدير", false],
+      ["diagnoses", "التشخيص", true],
+      ["procedures", "العملية", true],
+      ["procClass", "تصنيف العملية (لكل عملية)", true],
+      ["categoryId", "نوع العمليات (كبرى / الدور الثالث / طوارئ)", true],
+      ["room", "رقم الغرفة", true],
+      ["anesthesiaType", "نوع التخدير", true],
+      ["finance", "المعاملة المالية", true],
+      ["contractEntity", "جهة التعاقد — عند اختيار معاملة لها جهات", true],
+      ["company", "اسم الشركة — عند شركة خارجية: نعم", true],
+      ["supplyType", "نوع المستلزم — عند شركة خارجية: نعم", false],
+      ["from", "قادم من", false],
+      ["to", "خروج إلى", false],
+      ["postponeReason", "سبب التأجيل — عند التأجيل", true],
+      ["notes", "ملاحظات", false]
+    ];
+    MAX_PROCEDURES = 3;
+    DEFAULT_SETTINGS = {
+      procClasses: ["صغرى", "متوسطة", "كبرى", "مهارة", "ذات طابع", "متقدمة"],
+      required: Object.fromEntries(REQUIRABLE_FIELDS.map(([k, , d]) => [k, d])),
+      hospitalName: "مستشفى الشيخ زايد آل نهيان",
+      specialties: [
+        { id: "ortho", name: "عظام" },
+        { id: "gen", name: "جراحة عامة" },
+        { id: "gyn", name: "نسا وتوليد" },
+        { id: "oph", name: "رمد" },
+        { id: "uro", name: "مسالك بولية" },
+        { id: "ent", name: "أنف وأذن وحنجرة" },
+        { id: "gi", name: "مناظير جهاز هضمي" }
+      ],
+      consultants: { ortho: [], gen: [], gyn: [], oph: [], uro: [], ent: [], gi: [] },
+      diagnoses: {
+        ortho: ["كسر عنق الفخذ", "كسر جسم عظمة الفخذ", "كسر الساق", "كسر الكاحل", "كسر الكعبرة", "خشونة الركبة", "خشونة الفخذ", "قطع الرباط الصليبي الأمامي", "قطع الغضروف الهلالي"],
+        gen: ["التهاب الزائدة الدودية", "حصوات المرارة", "فتق إربي", "فتق سري"],
+        gyn: ["ولادة قيصرية", "ورم ليفي بالرحم", "كيس على المبيض"],
+        oph: ["مياه بيضاء", "مياه زرقاء"],
+        uro: ["حصوة بالحالب", "تضخم البروستاتا"],
+        ent: ["تضخم اللوزتين", "انحراف الحاجز الأنفي"],
+        gi: ["نزيف جهاز هضمي علوي", "دوالي المريء"]
+      },
+      procedures: {
+        ortho: ["تثبيت داخلي بشريحة ومسامير", "مسمار نخاعي", "تغيير مفصل ركبة كلي", "تغيير مفصل فخذ كلي", "تغيير مفصل فخذ جزئي", "منظار ركبة", "إعادة بناء الرباط الصليبي", "تثبيت خارجي", "إزالة شرائح ومسامير"],
+        gen: ["استئصال الزائدة الدودية", "استئصال المرارة بالمنظار", "إصلاح فتق بشبكة"],
+        gyn: ["ولادة قيصرية", "استئصال ورم ليفي", "منظار رحمي"],
+        oph: ["فاكو وزرع عدسة", "عملية مياه زرقاء"],
+        uro: ["منظار حالب وتفتيت", "استئصال البروستاتا بالمنظار"],
+        ent: ["استئصال اللوزتين", "تعديل الحاجز الأنفي"],
+        gi: ["منظار علوي", "منظار سفلي", "ربط دوالي المريء"]
+      },
+      categories: [
+        { id: "major", name: "عمليات كبرى", rooms: ["غرفة 1", "غرفة 2", "غرفة 3"] },
+        { id: "third", name: "عمليات الدور الثالث", rooms: ["نسا", "رمد"] },
+        { id: "er", name: "طوارئ", rooms: ["طوارئ", "مناظير جهاز هضمي"] }
+      ],
+      anesthetists: [],
+      anesthesiaTypes: ["كلي", "نصفي", "موضعي"],
+      finance: [
+        { name: "نقدي", entities: false },
+        { name: "تأمين صحي", entities: false },
+        { name: "نفقة دولة", entities: false },
+        { name: "تعاقدات", entities: true }
+      ],
+      contractEntities: [],
+      companies: [],
+      supplyTypes: ["شرائح ومسامير", "مفاصل"],
+      locations: ["الدور الثالث", "الدور الرابع اقتصادي", "جراحة", "طوارئ", "رعاية"],
+      postponeReasons: ["عدم لياقة المريض", "عدم توفر مستلزمات", "عدم توفر سرير رعاية", "رفض المريض", "ضيق الوقت"]
+    };
+    EXPORT_COLUMNS = [
+      ["date", "اليوم"],
+      ["time", "الوقت"],
+      ["patientName", "اسم المريض"],
+      ["mrn", "الرقم الطبي"],
+      ["specialty", "التخصص"],
+      ["consultant", "الاستشاري"],
+      ["anesthetist", "طبيب التخدير"],
+      ["diagnoses", "التشخيص"],
+      ["procedures", "العملية"],
+      ["procClasses", "تصنيف العملية"],
+      ["category", "نوع العمليات"],
+      ["room", "الغرفة"],
+      ["anesthesiaType", "نوع التخدير"],
+      ["externalCompany", "شركة خارجية"],
+      ["company", "اسم الشركة"],
+      ["supplyType", "نوع المستلزم"],
+      ["waitingList", "قوائم انتظار"],
+      ["finance", "المعاملة المالية"],
+      ["contractEntity", "جهة التعاقد"],
+      ["from", "قادم من"],
+      ["to", "خروج إلى"],
+      ["status", "الحالة"],
+      ["postponeReason", "سبب التأجيل"],
+      ["notes", "ملاحظات"],
+      ["createdByName", "سجّلها"]
+    ];
+  }
+});
+
+// js/data-firebase.js
+var data_firebase_exports = {};
+__export(data_firebase_exports, {
+  createFirebaseApi: () => createFirebaseApi,
+  usernameToEmail: () => usernameToEmail
+});
+function usernameToEmail(username) {
+  const u = username.trim().toLowerCase();
+  const local = /^[a-z0-9._-]+$/.test(u) ? u : "x" + [...new TextEncoder().encode(u)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${local}@${USER_EMAIL_DOMAIN}`;
+}
+async function createFirebaseApi() {
+  const [appMod, authMod, fsMod] = await Promise.all([import(SDK("app")), import(SDK("auth")), import(SDK("firestore"))]);
+  const { initializeApp, deleteApp } = appMod;
+  const { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, updatePassword } = authMod;
+  const {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    collection,
+    getDocs,
+    query,
+    where,
+    writeBatch,
+    serverTimestamp
+  } = fsMod;
+  const app2 = initializeApp(firebaseConfig);
+  const auth = getAuth(app2);
+  const db = getFirestore(app2);
+  const arErr = (e) => {
+    const c = e?.code || "";
+    if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found")) return new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+    if (c.includes("email-already-in-use")) return new Error("اسم المستخدم موجود بالفعل");
+    if (c.includes("weak-password")) return new Error("كلمة المرور ضعيفة (6 أحرف على الأقل)");
+    if (c.includes("requires-recent-login")) return new Error("سجّل خروج ثم دخول مرة أخرى ثم أعد المحاولة");
+    if (c.includes("permission-denied")) return new Error("غير مسموح لك بهذا الإجراء");
+    if (c.includes("too-many-requests")) return new Error("محاولات كثيرة — انتظر قليلًا");
+    return e instanceof Error ? e : new Error(String(e));
+  };
+  const wrap = (fn) => async (...a) => {
+    try {
+      return await fn(...a);
+    } catch (e) {
+      throw arErr(e);
+    }
+  };
+  let current2 = null;
+  const firebaseApi = {
+    mode: "firebase",
+    needsSetup: wrap(async () => !(await getDoc(doc(db, "meta", "setup"))).exists()),
+    bootstrapAdmin: wrap(async ({ username, password, name }) => {
+      const cred = await createUserWithEmailAndPassword(auth, usernameToEmail(username), password);
+      const b = writeBatch(db);
+      b.set(doc(db, "users", cred.user.uid), {
+        username: username.trim().toLowerCase(),
+        name,
+        role: "admin",
+        active: true,
+        perms: { viewAll: true, dashboard: true, export: true }
+      });
+      b.set(doc(db, "meta", "setup"), { adminUid: cred.user.uid, at: serverTimestamp() });
+      await b.commit();
+      current2 = { uid: cred.user.uid, username: username.trim().toLowerCase(), name, role: "admin", active: true, perms: { viewAll: true, dashboard: true, export: true } };
+      firebaseApi._cb?.(current2);
+    }),
+    onAuth(cb) {
+      firebaseApi._cb = cb;
+      onAuthStateChanged(auth, async (u) => {
+        if (!u) {
+          current2 = null;
+          return cb(null);
+        }
+        try {
+          const snap = await getDoc(doc(db, "users", u.uid));
+          if (!snap.exists()) {
+            current2 = null;
+            return;
+          }
+          const p = { uid: u.uid, ...snap.data() };
+          if (!p.active) {
+            await signOut(auth);
+            current2 = null;
+            return cb(null, "هذا الحساب موقوف");
+          }
+          current2 = p;
+          cb(current2);
+        } catch (e) {
+          current2 = null;
+          cb(null, arErr(e).message);
+        }
+      });
+    },
+    login: wrap(async (username, password) => {
+      await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
+    }),
+    logout: wrap(async () => {
+      await signOut(auth);
+    }),
+    changePassword: wrap(async (p) => {
+      await updatePassword(auth.currentUser, p);
+    }),
+    getSettings: wrap(async () => {
+      const s = await getDoc(doc(db, "settings", "main"));
+      return withDefaults(s.exists() ? s.data() : null);
+    }),
+    saveSettings: wrap(async (s) => {
+      await setDoc(doc(db, "settings", "main"), s);
+    }),
+    listOps: wrap(async ({ from, to } = {}) => {
+      const all = current2.role === "admin" || current2.perms?.viewAll;
+      let q;
+      if (all) {
+        const c = [];
+        if (from) c.push(where("date", ">=", from));
+        if (to) c.push(where("date", "<=", to));
+        q = query(collection(db, "ops"), ...c);
+      } else {
+        q = query(collection(db, "ops"), where("createdBy", "==", current2.uid));
+      }
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate?.()?.toISOString() || "" })).filter((o) => (!from || o.date >= from) && (!to || o.date <= to));
+    }),
+    addOp: wrap(async (op) => {
+      const rec = { ...op, createdBy: current2.uid, createdByName: current2.name, createdAt: serverTimestamp() };
+      const ref = await addDoc(collection(db, "ops"), rec);
+      return { ...rec, id: ref.id, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+    }),
+    updateOp: wrap(async (id, patch) => {
+      const { id: _i, createdAt, ...rest } = patch;
+      await updateDoc(doc(db, "ops", id), { ...rest, updatedAt: serverTimestamp(), updatedByName: current2.name });
+    }),
+    deleteOp: wrap(async (id) => {
+      await deleteDoc(doc(db, "ops", id));
+    }),
+    listUsers: wrap(async () => (await getDocs(collection(db, "users"))).docs.map((d) => ({ uid: d.id, ...d.data() }))),
+    createUser: wrap(async ({ username, password, name, role, perms }) => {
+      const sec = initializeApp(firebaseConfig, "sec-" + Date.now());
+      try {
+        const secAuth = getAuth(sec);
+        const cred = await createUserWithEmailAndPassword(secAuth, usernameToEmail(username), password);
+        await signOut(secAuth);
+        await setDoc(doc(db, "users", cred.user.uid), { username: username.trim().toLowerCase(), name, role, perms, active: true });
+      } finally {
+        await deleteApp(sec);
+      }
+    }),
+    updateUser: wrap(async (uid2, patch) => {
+      if (uid2 === current2.uid && (patch.role && patch.role !== "admin" || patch.active === false)) throw new Error("لا يمكنك إيقاف أو تخفيض حسابك أنت");
+      await updateDoc(doc(db, "users", uid2), patch);
+    }),
+    listLearned: wrap(async () => (await getDocs(collection(db, "learned"))).docs.map((d) => ({ id: d.id, ...d.data() }))),
+    addLearned: async (items) => {
+      for (const t of items) {
+        try {
+          await setDoc(doc(db, "learned", learnedId(t)), { type: t.type, specialtyId: t.specialtyId, text: t.text, createdBy: current2.uid, createdAt: serverTimestamp() });
+        } catch {
+        }
+      }
+    },
+    deleteLearned: wrap(async (id) => {
+      await deleteDoc(doc(db, "learned", id));
+    })
+  };
+  return firebaseApi;
+}
+var V, SDK;
+var init_data_firebase = __esm({
+  "js/data-firebase.js"() {
+    init_config();
+    init_logic();
+    V = "10.12.2";
+    SDK = (m) => `https://www.gstatic.com/firebasejs/${V}/firebase-${m}.js`;
+  }
+});
+
+// js/data-local.js
+var data_local_exports = {};
+__export(data_local_exports, {
+  localApi: () => localApi
+});
+function seed() {
+  if (read("users", null)) return;
+  write("users", [{
+    uid: "admin",
+    username: "admin",
+    password: "admin123",
+    name: "مدير النظام",
+    role: "admin",
+    active: true,
+    perms: { viewAll: true, dashboard: true, export: true }
+  }]);
+  write("settings", structuredClone(DEFAULT_SETTINGS));
+  write("ops", []);
+  write("learned", []);
+}
+var K, read, write, uid, current, listeners, emit, need, strip, localApi;
+var init_data_local = __esm({
+  "js/data-local.js"() {
+    init_logic();
+    K = (k) => "opsapp_demo_" + k;
+    read = (k, d) => {
+      try {
+        const v = localStorage.getItem(K(k));
+        return v ? JSON.parse(v) : d;
+      } catch {
+        return d;
+      }
+    };
+    write = (k, v) => localStorage.setItem(K(k), JSON.stringify(v));
+    uid = () => Math.random().toString(36).slice(2, 12);
+    current = null;
+    listeners = [];
+    emit = () => listeners.forEach((cb) => cb(current));
+    need = (admin) => {
+      if (!current) throw new Error("غير مسجل الدخول");
+      if (admin && current.role !== "admin") throw new Error("غير مسموح — للأدمن فقط");
+    };
+    strip = (u) => {
+      const { password, ...rest } = u;
+      return rest;
+    };
+    localApi = {
+      mode: "demo",
+      async needsSetup() {
+        seed();
+        return false;
+      },
+      async bootstrapAdmin() {
+        throw new Error("غير مطلوب في وضع التجربة");
+      },
+      onAuth(cb) {
+        seed();
+        listeners.push(cb);
+        const sid = sessionStorage.getItem(K("session"));
+        const u = read("users", []).find((x) => x.uid === sid && x.active);
+        current = u ? strip(u) : null;
+        setTimeout(() => cb(current), 0);
+      },
+      async login(username, password) {
+        seed();
+        const u = read("users", []).find((x) => x.username === username.trim().toLowerCase() && x.password === password);
+        if (!u) throw new Error("اسم المستخدم أو كلمة المرور غير صحيحة");
+        if (!u.active) throw new Error("هذا الحساب موقوف");
+        sessionStorage.setItem(K("session"), u.uid);
+        current = strip(u);
+        emit();
+      },
+      async logout() {
+        sessionStorage.removeItem(K("session"));
+        current = null;
+        emit();
+      },
+      async changePassword(p) {
+        need();
+        const users = read("users", []);
+        users.find((x) => x.uid === current.uid).password = p;
+        write("users", users);
+      },
+      async getSettings() {
+        need();
+        return withDefaults(read("settings", null));
+      },
+      async saveSettings(s) {
+        need(true);
+        write("settings", s);
+      },
+      async listOps({ from, to } = {}) {
+        need();
+        const all = read("ops", []);
+        const mine = current.role === "admin" || current.perms?.viewAll ? all : all.filter((o) => o.createdBy === current.uid);
+        return mine.filter((o) => (!from || o.date >= from) && (!to || o.date <= to));
+      },
+      async addOp(op) {
+        need();
+        const ops = read("ops", []);
+        const rec = { ...op, id: uid(), createdBy: current.uid, createdByName: current.name, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+        ops.push(rec);
+        write("ops", ops);
+        return rec;
+      },
+      async updateOp(id, patch) {
+        need(true);
+        const ops = read("ops", []);
+        const i = ops.findIndex((o) => o.id === id);
+        if (i < 0) throw new Error("السجل غير موجود");
+        ops[i] = { ...ops[i], ...patch, updatedAt: (/* @__PURE__ */ new Date()).toISOString(), updatedByName: current.name };
+        write("ops", ops);
+      },
+      async deleteOp(id) {
+        need(true);
+        write("ops", read("ops", []).filter((o) => o.id !== id));
+      },
+      async listUsers() {
+        need(true);
+        return read("users", []).map(strip);
+      },
+      async createUser({ username, password, name, role, perms }) {
+        need(true);
+        const users = read("users", []);
+        const un = username.trim().toLowerCase();
+        if (users.some((u) => u.username === un)) throw new Error("اسم المستخدم موجود بالفعل");
+        users.push({ uid: uid(), username: un, password, name, role, perms, active: true });
+        write("users", users);
+      },
+      async updateUser(id, patch) {
+        need(true);
+        if (id === current.uid && (patch.role && patch.role !== "admin" || patch.active === false)) throw new Error("لا يمكنك إيقاف أو تخفيض حسابك أنت");
+        const users = read("users", []);
+        Object.assign(users.find((u) => u.uid === id), patch);
+        write("users", users);
+      },
+      async listLearned() {
+        need();
+        return read("learned", []);
+      },
+      async addLearned(items) {
+        need();
+        const l = read("learned", []);
+        for (const t of items) {
+          const id = learnedId(t);
+          if (!l.some((x) => x.id === id)) l.push({ ...t, id, createdBy: current.uid });
+        }
+        write("learned", l);
+      },
+      async deleteLearned(id) {
+        need(true);
+        write("learned", read("learned", []).filter((x) => x.id !== id));
+      }
+    };
+  }
+});
+
+// js/data.js
+init_config();
+async function loadApi() {
+  if (firebaseConfig.apiKey) {
+    const m2 = await Promise.resolve().then(() => (init_data_firebase(), data_firebase_exports));
+    return m2.createFirebaseApi();
+  }
+  const m = await Promise.resolve().then(() => (init_data_local(), data_local_exports));
+  return m.localApi;
+}
+
+// js/app.js
+init_logic();
+var $ = (s, r = document) => r.querySelector(s);
+var esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+var app = $("#app");
+var toastT;
+function toast(msg, err = false) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast" + (err ? " err" : "");
+  t.hidden = false;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.hidden = true, err ? 4500 : 2200);
+}
+function modal(html) {
+  $("#modal-body").innerHTML = html;
+  $("#modal").hidden = false;
+}
+function closeModal() {
+  $("#modal").hidden = true;
+  $("#modal-body").innerHTML = "";
+}
+var nowTime = () => {
+  const d = /* @__PURE__ */ new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+var monthStart = () => todayISO().slice(0, 8) + "01";
+var fmtDate = (d) => {
+  if (!d) return "";
+  const [y, m, dd] = d.split("-");
+  return `${dd}/${m}/${y}`;
+};
+var opt = (v, label, sel) => `<option value="${esc(v)}"${sel ? " selected" : ""}>${esc(label ?? v)}</option>`;
+var can = (p) => user && (user.role === "admin" || !!user.perms?.[p]);
+var isAdmin = () => user?.role === "admin";
+var api;
+var user = null;
+var settings = withDefaults(null);
+var learned = [];
+var view = "entry";
+var form;
+var editingId = null;
+var formErrors = [];
+var saving = false;
+var focusTag = null;
+var tagDraft = { diagnoses: "", procedures: "" };
+var listF = { from: monthStart(), to: todayISO(), specialtyId: "", categoryId: "", status: "", finance: "", procClass: "", q: "" };
+var listOps = [];
+var dailyDate = todayISO();
+var dashF = { preset: "month", from: monthStart(), to: todayISO(), specialtyId: "" };
+function blankForm(keep = {}) {
+  if (typeof tagDraft !== "undefined") {
+    tagDraft.diagnoses = "";
+    tagDraft.procedures = "";
+  }
+  return {
+    date: keep.date || todayISO(),
+    time: nowTime(),
+    patientName: "",
+    mrn: "",
+    specialtyId: "",
+    consultant: "",
+    anesthetist: "",
+    diagnoses: [],
+    procedures: [],
+    procClasses: [],
+    categoryId: "",
+    room: "",
+    anesthesiaType: "",
+    externalCompany: false,
+    company: "",
+    supplyType: "",
+    waitingList: false,
+    finance: "",
+    contractEntity: "",
+    from: "",
+    to: "",
+    notes: "",
+    status: "done",
+    postponeReason: ""
+  };
+}
+form = blankForm();
+(async function boot() {
+  try {
+    api = await loadApi();
+  } catch (e) {
+    app.innerHTML = `<div class="login"><div class="card errors">تعذر تحميل البرنامج: ${esc(e.message)}</div></div>`;
+    return;
+  }
+  api.onAuth(async (u, err) => {
+    user = u;
+    if (!u) return renderLogin(err);
+    try {
+      [settings, learned] = await Promise.all([api.getSettings(), api.listLearned()]);
+    } catch (e) {
+      toast(e.message, true);
+    }
+    if (view === "settings" && !isAdmin()) view = "entry";
+    renderShell();
+  });
+})();
+async function renderLogin(err) {
+  let setup = false;
+  try {
+    setup = await api.needsSetup();
+  } catch {
+  }
+  app.innerHTML = `
+  ${api.mode === "demo" ? '<div class="demo-bar">وضع التجربة — البيانات محفوظة على هذا الجهاز فقط. الدخول: admin / admin123</div>' : ""}
+  <div class="login"><div class="card">
+    <h2>إدارة العمليات</h2>
+    <div class="sub">${esc(settings.hospitalName)}</div>
+    ${err ? `<div class="errors" style="margin-top:12px">${esc(err)}</div>` : ""}
+    ${setup ? `
+      <p class="hint" style="margin-top:12px">أول تشغيل: أنشئ حساب الأدمن الرئيسي.</p>
+      <form id="setup-form">
+        <div class="field"><label>الاسم</label><input type="text" name="name" required></div>
+        <div class="field"><label>اسم المستخدم</label><input type="text" name="username" required autocomplete="username"></div>
+        <div class="field"><label>كلمة المرور (6 أحرف على الأقل)</label><input type="password" name="password" required minlength="6" autocomplete="new-password"></div>
+        <button class="btn">إنشاء حساب الأدمن</button>
+      </form>` : `
+      <form id="login-form">
+        <div class="field"><label>اسم المستخدم</label><input type="text" name="username" required autocomplete="username" autocapitalize="off"></div>
+        <div class="field"><label>كلمة المرور</label><input type="password" name="password" required autocomplete="current-password"></div>
+        <button class="btn">دخول</button>
+      </form>`}
+  </div></div>`;
+  const f = $("#login-form") || $("#setup-form");
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(f));
+    const b = f.querySelector("button");
+    b.disabled = true;
+    try {
+      if (setup) await api.bootstrapAdmin(d);
+      else await api.login(d.username, d.password);
+    } catch (ex) {
+      toast(ex.message, true);
+      b.disabled = false;
+    }
+  });
+}
+function tabs() {
+  const t = [["entry", editingId ? "تعديل عملية" : "تسجيل عملية"], ["list", "القائمة"], ["daily", "لستة اليوم"]];
+  if (can("dashboard")) t.push(["dash", "الإحصائيات"]);
+  if (isAdmin()) t.push(["settings", "الإعدادات"]);
+  return t;
+}
+function renderShell() {
+  app.innerHTML = `
+  ${api.mode === "demo" ? '<div class="demo-bar">وضع التجربة — البيانات على هذا الجهاز فقط (لم يتم ربط Firebase بعد)</div>' : ""}
+  <header class="top">
+    <div class="top-row">
+      <h1>إدارة العمليات <span class="sub" style="color:#cfe6ee">${esc(settings.hospitalName)}</span></h1>
+      <span class="who">${esc(user.name)}${isAdmin() ? " (أدمن)" : ""}</span>
+      <button class="ghost" data-act="pwd">كلمة المرور</button>
+      <button class="ghost" data-act="logout">خروج</button>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <main id="view"></main>`;
+  go(view);
+}
+function renderTabs() {
+  $("#tabs").innerHTML = tabs().map(([k, l]) => `<button data-go="${k}" class="${view === k ? "on" : ""}">${l}</button>`).join("");
+}
+async function go(v) {
+  if (v !== "entry" && editingId) {
+    editingId = null;
+    form = blankForm();
+    formErrors = [];
+  }
+  view = v;
+  renderTabs();
+  const el = $("#view");
+  if (v === "entry") renderEntry();
+  else if (v === "list") {
+    el.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    await loadList();
+    renderList();
+  } else if (v === "daily") {
+    el.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    await renderDaily();
+  } else if (v === "dash") {
+    el.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    await renderDash();
+  } else if (v === "settings") renderSettings();
+  window.scrollTo(0, 0);
+}
+var spec = () => settings.specialties.find((s) => s.id === form.specialtyId);
+var cat = () => settings.categories.find((c) => c.id === form.categoryId);
+var rq = (k) => settings.required?.[k] ? "req" : "";
+var finObj = () => settings.finance.find((f) => f.name === form.finance);
+function chips(field, options, extraCls = () => "") {
+  return `<div class="chips">${options.map(([v, label]) => {
+    const on = String(form[field]) === String(v);
+    return `<button type="button" class="chip ${on ? "on " + extraCls(v) : ""}" data-chip="${field}" data-val="${esc(v)}">${esc(label)}</button>`;
+  }).join("")}</div>`;
+}
+function select(field, list, placeholder = "— اختر —") {
+  const vals = list.includes(form[field]) || !form[field] ? list : [form[field], ...list];
+  return `<select data-field="${field}">${opt("", placeholder, !form[field])}${vals.map((v) => opt(v, v, v === form[field])).join("")}</select>`;
+}
+function tagBox(key, label) {
+  const disabled = !form.specialtyId;
+  const full = key === "procedures" && form.procedures.length >= MAX_PROCEDURES;
+  return `<div class="field tags" data-tagbox="${key}">
+    <label class="${rq(key)}">${label}</label>
+    ${key === "procedures" ? `<div class="proc-list">${form.procedures.map((t, i) => `<div class="proc-row"><span class="tag">${esc(t)}</span>
+          <select data-pclass="${i}" class="${rq("procClass") && !form.procClasses[i] ? "need" : ""}">${opt("", "— التصنيف —", !form.procClasses[i])}${settings.procClasses.map((c) => opt(c, c, c === form.procClasses[i])).join("")}</select>
+          <button type="button" class="x" data-untag="procedures" data-i="${i}" aria-label="حذف">×</button></div>`).join("")}</div>` : `<div class="tag-list">${form[key].map((t, i) => `<span class="tag">${esc(t)}<button type="button" data-untag="${key}" data-i="${i}" aria-label="حذف">×</button></span>`).join("")}</div>`}
+    ${full ? `<span class="hint">الحد الأقصى ${MAX_PROCEDURES} عمليات في الحالة</span>` : `
+    <div class="tag-row">
+      <input type="text" data-tag="${key}" value="${esc(tagDraft[key])}" placeholder="${disabled ? "اختر التخصص أولًا" : "اكتب للبحث أو إضافة جديد…"}" ${disabled ? "disabled" : ""} autocomplete="off">
+      <button type="button" class="btn sec sm" data-addtag="${key}" ${disabled ? "disabled" : ""}>إضافة</button>
+    </div>
+    <div class="sugg" hidden></div>
+    ${form[key].length ? "" : `<span class="hint">يمكن إضافة أكثر من ${key === "diagnoses" ? "تشخيص" : `عملية (حتى ${MAX_PROCEDURES})`}</span>`}`}
+  </div>`;
+}
+function termPool(key) {
+  const type = key === "diagnoses" ? "dx" : "op";
+  return [...settings[key][form.specialtyId] || [], ...learned.filter((l) => l.type === type && l.specialtyId === form.specialtyId).map((l) => l.text)];
+}
+function renderEntry() {
+  const s = spec(), c = cat(), f = finObj();
+  if (formErrors.length) formErrors = validateOp(cleanOp(form, settings), settings);
+  $("#view").innerHTML = `
+  ${editingId ? `<div class="card" style="background:var(--warn-bg)"><b>تعديل سجل:</b> ${esc(form.patientName)} — ${fmtDate(form.date)}</div>` : ""}
+  ${formErrors.length ? `<div class="errors"><b>استكمل البيانات التالية:</b><ul>${formErrors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : ""}
+  <div class="card"><h3>المريض</h3><div class="grid">
+    <div class="field"><label class="req">اليوم</label><input type="date" data-field="date" value="${esc(form.date)}"></div>
+    <div class="field"><label class="${rq("time")}">الوقت</label><input type="time" data-field="time" value="${esc(form.time)}"></div>
+    <div class="field"><label class="req">اسم المريض</label><input type="text" data-field="patientName" value="${esc(form.patientName)}"></div>
+    <div class="field"><label class="${rq("mrn")}">الرقم الطبي</label><input type="text" inputmode="numeric" data-field="mrn" value="${esc(form.mrn)}"></div>
+  </div></div>
+
+  <div class="card"><h3>التخصص والفريق</h3>
+    <div class="field"><label class="${rq("specialtyId")}">التخصص</label>${chips("specialtyId", settings.specialties.map((x) => [x.id, x.name]))}</div>
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label class="${rq("consultant")}">الاستشاري</label>${s ? select("consultant", settings.consultants[s.id] || []) : "<select disabled><option>اختر التخصص أولًا</option></select>"}
+        ${s && !(settings.consultants[s.id] || []).length ? '<span class="hint">لا يوجد استشاريين لهذا التخصص — أضفهم من الإعدادات</span>' : ""}</div>
+      <div class="field"><label class="${rq("anesthetist")}">طبيب التخدير</label>${select("anesthetist", settings.anesthetists)}</div>
+    </div>
+  </div>
+
+  <div class="card"><h3>التشخيص والعملية</h3><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+    ${tagBox("diagnoses", "التشخيص")}
+    ${tagBox("procedures", "نوع العملية")}
+  </div></div>
+
+  <div class="card"><h3>العمليات والغرفة والتخدير</h3>
+    <div class="field"><label class="${rq("categoryId")}">العمليات</label>${chips("categoryId", settings.categories.map((x) => [x.id, x.name]))}</div>
+    <div class="field" style="margin-top:12px"><label class="${rq("room")}">رقم الغرفة</label>${c ? chips("room", c.rooms.map((r) => [r, r])) : '<span class="hint">اختر نوع العمليات أولًا</span>'}</div>
+    <div class="field" style="margin-top:12px"><label class="${rq("anesthesiaType")}">نوع التخدير</label>${chips("anesthesiaType", settings.anesthesiaTypes.map((x) => [x, x]))}</div>
+  </div>
+
+  <div class="card"><h3>المعاملة والمستلزمات</h3>
+    <div class="field"><label class="${rq("finance")}">المعاملة المالية</label>${chips("finance", settings.finance.map((x) => [x.name, x.name]))}</div>
+    ${f?.entities ? `<div class="field" style="margin-top:12px;max-width:420px"><label class="${rq("contractEntity")}">جهة التعاقد</label>${select("contractEntity", settings.contractEntities)}</div>` : ""}
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label>شركة خارجية</label>${chips("externalCompany", [[true, "نعم"], [false, "لا"]])}</div>
+      <div class="field"><label>قوائم انتظار</label>${chips("waitingList", [[true, "نعم"], [false, "لا"]])}</div>
+    </div>
+    ${form.externalCompany ? `<div class="grid" style="margin-top:12px">
+      <div class="field"><label class="${rq("company")}">اسم الشركة</label>${select("company", settings.companies)}</div>
+      <div class="field"><label class="${rq("supplyType")}">نوع المستلزم</label>${chips("supplyType", settings.supplyTypes.map((x) => [x, x]))}</div>
+    </div>` : ""}
+  </div>
+
+  <div class="card"><h3>الحركة والحالة</h3>
+    <div class="grid">
+      <div class="field"><label class="${rq("from")}">قادم من</label>${select("from", settings.locations)}</div>
+      <div class="field"><label class="${rq("to")}">خروج إلى</label>${select("to", settings.locations)}</div>
+    </div>
+    <div class="field" style="margin-top:12px"><label class="req">الحالة</label>${chips("status", [["done", "تمت"], ["postponed", "تأجيل"]], (v) => v === "done" ? "ok" : "bad")}</div>
+    ${form.status === "postponed" ? `<div class="field" style="margin-top:12px;max-width:520px"><label class="${rq("postponeReason")}">سبب التأجيل</label>
+      <input type="text" data-field="postponeReason" list="pp-reasons" value="${esc(form.postponeReason)}" placeholder="اختر أو اكتب السبب">
+      <datalist id="pp-reasons">${settings.postponeReasons.map((r) => opt(r)).join("")}</datalist>
+      ${chips("postponeReason", settings.postponeReasons.map((r) => [r, r]))}</div>` : ""}
+    <div class="field" style="margin-top:12px"><label class="${rq("notes")}">ملاحظات</label><textarea data-field="notes">${esc(form.notes)}</textarea></div>
+  </div>
+
+  <div class="save-bar">
+    <button class="btn" data-act="save" ${saving ? "disabled" : ""}>${editingId ? "حفظ التعديل" : "حفظ العملية"}</button>
+    ${editingId ? '<button class="btn sec" data-act="cancel-edit">إلغاء</button>' : '<button class="btn sec" data-act="clear" style="flex:0 0 auto">مسح الخانات</button>'}
+  </div>`;
+  if (focusTag) {
+    const i = $(`[data-tag="${focusTag}"]`);
+    if (i) i.focus();
+    focusTag = null;
+  }
+}
+function setChip(field, raw) {
+  let v = raw;
+  if (field === "externalCompany" || field === "waitingList") v = raw === "true";
+  const prev = form[field];
+  if (field === "supplyType" && prev === v) v = "";
+  form[field] = v;
+  if (field === "specialtyId" && prev !== v) {
+    form.consultant = "";
+    form.diagnoses = [];
+    form.procedures = [];
+    form.procClasses = [];
+    tagDraft.diagnoses = "";
+    tagDraft.procedures = "";
+  }
+  if (field === "categoryId" && prev !== v) {
+    const c = cat();
+    form.room = c && c.rooms.length === 1 ? c.rooms[0] : "";
+  }
+  if (field === "finance" && prev !== v) form.contractEntity = "";
+  if (field === "externalCompany" && !v) {
+    form.company = "";
+    form.supplyType = "";
+  }
+  if (field === "status" && v === "done") form.postponeReason = "";
+  renderEntry();
+}
+function pushTerm(key, t) {
+  const known = termPool(key).find((x) => normalizeTerm(x) === normalizeTerm(t)) || t;
+  if (form[key].some((x) => normalizeTerm(x) === normalizeTerm(known))) return;
+  if (key === "procedures") {
+    if (form.procedures.length >= MAX_PROCEDURES) {
+      toast(`الحد الأقصى ${MAX_PROCEDURES} عمليات في الحالة`, true);
+      return;
+    }
+    form.procClasses = form.procedures.map((_, i) => form.procClasses[i] || "");
+    form.procClasses.push("");
+  }
+  form[key].push(known);
+}
+function addTag(key, text) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (!t) return;
+  pushTerm(key, t);
+  tagDraft[key] = "";
+  focusTag = key;
+  renderEntry();
+}
+function showSugg(input) {
+  const key = input.dataset.tag;
+  const box = input.closest(".tags").querySelector(".sugg");
+  const q = input.value;
+  const list = suggest(termPool(key), q, 10, form[key]);
+  const exact = list.some((x) => normalizeTerm(x) === normalizeTerm(q));
+  let html = list.map((x) => `<button type="button" data-sugg="${key}" data-val="${esc(x)}">${esc(x)}</button>`).join("");
+  if (q.trim() && !exact) html += `<button type="button" class="new" data-sugg="${key}" data-val="${esc(q.trim())}">+ إضافة "${esc(q.trim())}" كجديد</button>`;
+  box.innerHTML = html;
+  box.hidden = !html;
+}
+function flushPendingTags() {
+  for (const key of ["diagnoses", "procedures"]) {
+    const t = tagDraft[key].trim();
+    if (t && form.specialtyId) pushTerm(key, t);
+    tagDraft[key] = "";
+  }
+}
+async function saveForm() {
+  if (saving) return;
+  flushPendingTags();
+  const clean = cleanOp(form, settings);
+  formErrors = validateOp(clean, settings);
+  if (formErrors.length) {
+    renderEntry();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  saving = true;
+  renderEntry();
+  try {
+    if (editingId) await api.updateOp(editingId, clean);
+    else await api.addOp(clean);
+    const nt = newTerms(clean, settings, learned);
+    if (nt.length) {
+      await api.addLearned(nt);
+      learned.push(...nt.map((t) => ({ ...t, id: learnedId(t) })));
+    }
+    const wasEdit = !!editingId;
+    toast(wasEdit ? "تم حفظ التعديل" : `تم حفظ عملية ${clean.patientName}`);
+    editingId = null;
+    formErrors = [];
+    form = blankForm({ date: clean.date });
+    saving = false;
+    if (wasEdit) return go("list");
+    renderTabs();
+    renderEntry();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch (e) {
+    saving = false;
+    renderEntry();
+    toast(e.message, true);
+  }
+}
+async function loadList() {
+  try {
+    listOps = await api.listOps({ from: listF.from, to: listF.to });
+  } catch (e) {
+    listOps = [];
+    toast(e.message, true);
+  }
+}
+function filteredList() {
+  return filterOps(listOps, listF);
+}
+var badge = (o) => o.status === "done" ? '<span class="badge ok">تمت</span>' : '<span class="badge bad">تأجيل</span>';
+function renderList() {
+  const rows = filteredList();
+  const st = computeStats(rows);
+  const consultants = listF.specialtyId ? settings.consultants[listF.specialtyId] || [] : [];
+  $("#view").innerHTML = `
+  <div class="card">
+    <div class="filters">
+      <div class="field"><label>من</label><input type="date" data-lf="from" value="${listF.from}"></div>
+      <div class="field"><label>إلى</label><input type="date" data-lf="to" value="${listF.to}"></div>
+      <div class="field"><label>التخصص</label><select data-lf="specialtyId">${opt("", "الكل")}${settings.specialties.map((s) => opt(s.id, s.name, s.id === listF.specialtyId)).join("")}</select></div>
+      ${consultants.length ? `<div class="field"><label>الاستشاري</label><select data-lf="consultant">${opt("", "الكل")}${consultants.map((c) => opt(c, c, c === listF.consultant)).join("")}</select></div>` : ""}
+      <div class="field"><label>العمليات</label><select data-lf="categoryId">${opt("", "الكل")}${settings.categories.map((c) => opt(c.id, c.name, c.id === listF.categoryId)).join("")}</select></div>
+      <div class="field"><label>الحالة</label><select data-lf="status">${opt("", "الكل")}${opt("done", "تمت", listF.status === "done")}${opt("postponed", "تأجيل", listF.status === "postponed")}</select></div>
+      <div class="field"><label>التصنيف</label><select data-lf="procClass">${opt("", "الكل")}${settings.procClasses.map((c) => opt(c, c, c === listF.procClass)).join("")}</select></div>
+      <div class="field"><label>المعاملة</label><select data-lf="finance">${opt("", "الكل")}${settings.finance.map((f) => opt(f.name, f.name, f.name === listF.finance)).join("")}</select></div>
+      <div class="field"><label>بحث</label><input type="search" data-lf="q" value="${esc(listF.q)}" placeholder="اسم / رقم طبي / عملية"></div>
+    </div>
+    <div class="actions" style="margin-top:12px;justify-content:space-between">
+      <span><b>${st.total}</b> سجل — تمت ${st.done} — تأجيل ${st.postponed}</span>
+      ${can("export") ? `<span class="actions"><button class="btn sec sm" data-act="xlsx">تصدير Excel</button><button class="btn sec sm" data-act="pdf">PDF / طباعة</button></span>` : ""}
+    </div>
+  </div>
+  <div class="card">
+    ${rows.length ? `
+    <div class="table-wrap resp"><table>
+      <thead><tr><th>اليوم</th><th>المريض</th><th>التخصص / الاستشاري</th><th>التشخيص</th><th>العملية</th><th>الغرفة</th><th>المعاملة</th><th>الحالة</th></tr></thead>
+      <tbody>${rows.map((o) => `<tr data-open="${o.id}">
+        <td>${fmtDate(o.date)}<div class="sub">${esc(o.time)}</div></td>
+        <td>${esc(o.patientName)}<div class="sub">${esc(o.mrn)}</div></td>
+        <td>${esc(o.specialty)}<div class="sub">${esc(o.consultant)}</div></td>
+        <td>${esc((o.diagnoses || []).join("، "))}</td>
+        <td>${esc(procText(o, "، "))}</td>
+        <td>${esc(o.room)}<div class="sub">${esc(o.category)}</div></td>
+        <td>${esc(o.finance)}${o.contractEntity ? `<div class="sub">${esc(o.contractEntity)}</div>` : ""}</td>
+        <td>${badge(o)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="cards-m">${rows.map((o) => `<div class="op-card" data-open="${o.id}">
+      <div class="r1"><span>${esc(o.patientName)}</span>${badge(o)}</div>
+      <div class="sub">${fmtDate(o.date)} ${esc(o.time)} — ${esc(o.mrn)}</div>
+      <div>${esc(o.specialty)} — ${esc(o.consultant)}</div>
+      <div class="sub">${esc(procText(o, "، "))} — ${esc(o.room)}</div></div>`).join("")}</div>` : '<div class="empty">لا توجد سجلات في هذه الفترة</div>'}
+  </div>`;
+}
+function opDetails(o) {
+  const row = toRow(o);
+  return `<div class="details"><h3 style="margin-top:0">${esc(o.patientName)}</h3><dl>
+    ${Object.entries(row).filter(([, v]) => v !== "").map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
+    ${o.updatedByName ? `<dt>آخر تعديل</dt><dd>${esc(o.updatedByName)}</dd>` : ""}
+  </dl>
+  ${isAdmin() ? `<div class="actions" style="margin-top:16px">
+    <button class="btn" data-edit="${o.id}">تعديل</button>
+    <button class="btn danger" data-del="${o.id}">حذف</button></div>` : '<p class="hint" style="margin-top:14px">التعديل والحذف للأدمن فقط.</p>'}</div>`;
+}
+var xlsxLoading;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  xlsxLoading || (xlsxLoading = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    s.onload = res;
+    s.onerror = () => {
+      xlsxLoading = null;
+      rej(new Error("تعذر تحميل مكتبة Excel — تأكد من الإنترنت"));
+    };
+    document.head.appendChild(s);
+  }));
+  return xlsxLoading;
+}
+async function exportXlsx(rows, name) {
+  try {
+    await loadXLSX();
+    const X = window.XLSX;
+    const ws = X.utils.json_to_sheet(rows.map(toRow), { header: EXPORT_COLUMNS.map((c) => c[1]) });
+    ws["!cols"] = EXPORT_COLUMNS.map(([k]) => ({ wch: ["diagnoses", "procedures", "notes", "patientName"].includes(k) ? 30 : 14 }));
+    const wb = X.utils.book_new();
+    wb.Workbook = { Views: [{ RTL: true }] };
+    X.utils.book_append_sheet(wb, ws, "العمليات");
+    X.writeFile(wb, `${name}.xlsx`);
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+function printTable(title, meta, rows, cols) {
+  $("#print").innerHTML = `<h2>${esc(title)}</h2><div class="meta">${meta}</div>
+    <table><thead><tr>${cols.map((c) => `<th>${esc(c[1])}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((o) => {
+    const r = toRow(o);
+    return `<tr>${cols.map((c) => `<td>${esc(c[0] === "#" ? "" : r[c[1]])}</td>`).join("")}</tr>`;
+  }).join("")}</tbody></table>`;
+  setTimeout(() => window.print(), 50);
+}
+async function renderDaily() {
+  let ops = [];
+  try {
+    ops = await api.listOps({ from: dailyDate, to: dailyDate });
+  } catch (e) {
+    toast(e.message, true);
+  }
+  ops.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const groups = [];
+  for (const c of settings.categories) {
+    for (const r of c.rooms) {
+      const g = ops.filter((o) => o.categoryId === c.id && o.room === r);
+      if (g.length) groups.push({ title: `${c.name} — ${r}`, ops: g });
+    }
+  }
+  const rest = ops.filter((o) => !groups.some((g) => g.ops.includes(o)));
+  if (rest.length) groups.push({ title: "أخرى", ops: rest });
+  const st = computeStats(ops);
+  const table = (g) => `<table><thead><tr><th>م</th><th>الوقت</th><th>اسم المريض</th><th>الرقم الطبي</th><th>التخصص</th><th>الاستشاري</th><th>التشخيص</th><th>العملية</th><th>التخدير</th><th>المعاملة</th><th>الحالة</th></tr></thead>
+    <tbody>${g.ops.map((o, i) => `<tr data-open="${o.id}"><td>${i + 1}</td><td>${esc(o.time)}</td><td>${esc(o.patientName)}</td><td>${esc(o.mrn)}</td><td>${esc(o.specialty)}</td><td>${esc(o.consultant)}</td><td>${esc((o.diagnoses || []).join("، "))}</td><td>${esc(procText(o, "، "))}</td><td>${esc(o.anesthesiaType)}</td><td>${esc(o.finance)}</td><td>${o.status === "done" ? "تمت" : "تأجيل" + (o.postponeReason ? " — " + esc(o.postponeReason) : "")}</td></tr>`).join("")}</tbody></table>`;
+  const summary = `العدد: ${st.total} — تمت: ${st.done} — تأجيل: ${st.postponed}`;
+  $("#view").innerHTML = `
+  <div class="card actions" style="justify-content:space-between">
+    <div class="actions"><div class="field"><label>اليوم</label><input type="date" id="daily-date" value="${dailyDate}"></div></div>
+    <div class="actions"><b>${summary}</b>
+      ${ops.length ? `<button class="btn sm" data-act="print-daily">طباعة / PDF</button>${can("export") ? '<button class="btn sec sm" data-act="xlsx-daily">Excel</button>' : ""}` : ""}</div>
+  </div>
+  <p class="hint">شكل اللستة ومكوناتها سيتم تحديدها لاحقًا — هذا شكل مبدئي.</p>
+  ${groups.length ? groups.map((g) => `<div class="card"><h3>${esc(g.title)} (${g.ops.length})</h3><div class="table-wrap">${table(g)}</div></div>`).join("") : '<div class="card empty">لا توجد عمليات مسجلة في هذا اليوم</div>'}`;
+  $("#daily-date").onchange = (e) => {
+    dailyDate = e.target.value || todayISO();
+    renderDaily();
+  };
+  renderDaily.print = () => {
+    $("#print").innerHTML = `<h2>لستة العمليات اليومية — ${esc(settings.hospitalName)}</h2><div class="meta">${fmtDate(dailyDate)} — ${summary}</div>
+      ${groups.map((g) => `<h3>${esc(g.title)}</h3>${table(g)}`).join("")}`;
+    setTimeout(() => window.print(), 50);
+  };
+  renderDaily.ops = ops;
+}
+function presetRange(p) {
+  const t = /* @__PURE__ */ new Date();
+  const iso = todayISO;
+  if (p === "today") return [iso(t), iso(t)];
+  if (p === "week") {
+    const d = new Date(t);
+    d.setDate(d.getDate() - 6);
+    return [iso(d), iso(t)];
+  }
+  if (p === "month") return [monthStart(), iso(t)];
+  if (p === "last30") {
+    const d = new Date(t);
+    d.setDate(d.getDate() - 29);
+    return [iso(d), iso(t)];
+  }
+  if (p === "year") return [`${t.getFullYear()}-01-01`, iso(t)];
+  return [dashF.from, dashF.to];
+}
+function bars(title, data, limit = 12) {
+  if (!data.length) return `<div class="card"><h3>${title}</h3><div class="empty" style="padding:14px">لا توجد بيانات</div></div>`;
+  const shown = data.slice(0, limit);
+  const rest = data.slice(limit).reduce((s, [, n]) => s + n, 0);
+  if (rest) shown.push(["أخرى", rest]);
+  const max = Math.max(...shown.map((d) => d[1]));
+  const total = data.reduce((s, [, n]) => s + n, 0);
+  return `<div class="card"><h3>${title}</h3><div class="bars">${shown.map(([k, n]) => `
+    <div class="bar-row" title="${esc(k)}: ${n} (${Math.round(n / total * 100)}%)"><span class="n">${esc(k)}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${n / max * 100}%;display:block"></span></span><span class="c">${n}</span></div>`).join("")}
+  </div></div>`;
+}
+function trend(st, from, to) {
+  const days = (new Date(to) - new Date(from)) / 864e5 + 1;
+  let data;
+  if (days <= 62) {
+    const m = new Map(st.byDay);
+    data = [];
+    for (let d = new Date(from); d <= new Date(to); d.setDate(d.getDate() + 1)) {
+      const k = todayISO(d);
+      data.push([k, m.get(k) || 0]);
+    }
+  } else data = st.byMonth;
+  if (!data.length) return "";
+  const max = Math.max(1, ...data.map((d) => d[1]));
+  const lab = (k) => k.length === 10 ? fmtDate(k).slice(0, 5) : k;
+  return `<div class="card"><h3>عدد العمليات ${days <= 62 ? "يوميًا" : "شهريًا"}</h3>
+    <div class="vchart">${data.map(([k, n]) => `<div class="col" title="${lab(k)}: ${n}">${n && data.length <= 31 ? `<span class="t">${n}</span>` : ""}<div class="b" style="height:${n / max * 100}%"></div></div>`).join("")}</div>
+    <div class="vlabels"><span>${lab(data[0][0])}</span><span>${lab(data[data.length - 1][0])}</span></div></div>`;
+}
+async function renderDash() {
+  const [from, to] = presetRange(dashF.preset);
+  dashF.from = from;
+  dashF.to = to;
+  let ops = [];
+  try {
+    ops = await api.listOps({ from, to });
+  } catch (e) {
+    toast(e.message, true);
+  }
+  if (dashF.specialtyId) ops = ops.filter((o) => o.specialtyId === dashF.specialtyId);
+  const st = computeStats(ops);
+  const pr = [["today", "اليوم"], ["week", "آخر 7 أيام"], ["month", "هذا الشهر"], ["last30", "آخر 30 يوم"], ["year", "هذه السنة"], ["custom", "مخصص"]];
+  $("#view").innerHTML = `
+  <div class="card"><div class="actions">
+    <div class="chips">${pr.map(([k, l]) => `<button class="chip ${dashF.preset === k ? "on" : ""}" data-preset="${k}">${l}</button>`).join("")}</div>
+  </div>
+  <div class="filters" style="margin-top:10px">
+    ${dashF.preset === "custom" ? `<div class="field"><label>من</label><input type="date" data-df="from" value="${from}"></div><div class="field"><label>إلى</label><input type="date" data-df="to" value="${to}"></div>` : `<div class="field"><label>الفترة</label><div style="padding:9px 0">${fmtDate(from)} — ${fmtDate(to)}</div></div>`}
+    <div class="field"><label>التخصص</label><select data-df="specialtyId">${opt("", "كل التخصصات")}${settings.specialties.map((s) => opt(s.id, s.name, s.id === dashF.specialtyId)).join("")}</select></div>
+  </div></div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">${st.total}</div><div class="k">إجمالي المسجل</div></div>
+    <div class="kpi"><div class="v" style="color:var(--ok)">${st.done}</div><div class="k">تمت</div></div>
+    <div class="kpi"><div class="v" style="color:var(--warn)">${st.postponed}</div><div class="k">تأجيل</div></div>
+    <div class="kpi"><div class="v">${st.postponeRate}%</div><div class="k">نسبة التأجيل</div></div>
+    <div class="kpi"><div class="v">${st.days ? Math.round(st.done / st.days * 10) / 10 : 0}</div><div class="k">متوسط العمليات / يوم عمل</div></div>
+    <div class="kpi"><div class="v">${st.waitingList}</div><div class="k">قوائم انتظار</div></div>
+    <div class="kpi"><div class="v">${st.externalCompany}</div><div class="k">بشركة خارجية</div></div>
+  </div>
+  ${trend(st, from, to)}
+  <p class="hint">التوزيعات التالية للعمليات التي <b>تمت</b> فقط. التأجيلات في بطاقاتها الخاصة.</p>
+  <div class="dash">
+    ${bars("حسب التخصص", st.bySpecialty)}
+    ${bars("حسب الاستشاري", st.byConsultant)}
+    ${bars("حسب الغرفة", st.byRoom)}
+    ${bars("حسب نوع العمليات", st.byCategory)}
+    ${bars("المعاملة المالية", st.byFinance)}
+    ${bars("جهات التعاقد", st.byContract)}
+    ${bars("نوع التخدير", st.byAnesthesia)}
+    ${bars("أطباء التخدير", st.byAnesthetist)}
+    ${bars("الشركات الخارجية", st.byCompany)}
+    ${bars("نوع المستلزمات", st.bySupply)}
+    ${bars("تصنيف العمليات", st.byProcClass)}
+    ${bars("أكثر العمليات", st.byProcedure, 10)}
+    ${bars("أكثر التشخيصات", st.byDiagnosis, 10)}
+    ${bars("أسباب التأجيل", st.postponeReasons)}
+    ${bars("التأجيل حسب التخصص", st.postponedBySpecialty)}
+  </div>`;
+}
+var getPath = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
+function listEditor(path, placeholder = "إضافة…") {
+  const list = getPath(settings, path) || [];
+  return `<div class="le">${list.map((x, i) => `<span class="item">${esc(x)}
+      <button title="تعديل الاسم" data-le-ren="${path}" data-i="${i}">✎</button>
+      <button class="del" title="حذف" data-le-del="${path}" data-i="${i}">×</button></span>`).join("") || '<span class="hint">القائمة فارغة</span>'}</div>
+    <form class="le-add" data-le-add="${path}"><input type="text" placeholder="${placeholder}"><button class="btn sm">إضافة</button></form>
+    <span class="hint">يمكن إضافة أكثر من عنصر مرة واحدة بالفصل بينهم بـ ؛ أو سطر جديد</span>`;
+}
+async function persist(msg = "تم الحفظ") {
+  try {
+    await api.saveSettings(settings);
+    toast(msg);
+  } catch (e) {
+    toast(e.message, true);
+    settings = await api.getSettings();
+  }
+  const open = [...document.querySelectorAll("details.set[open]")].map((d) => d.dataset.k);
+  renderSettings(open);
+}
+var usersCache = null;
+async function renderSettings(open = []) {
+  const o = (k) => open.includes(k) ? "open" : "";
+  const specBlocks = settings.specialties.map((s) => `
+    <div class="sub-block"><h4><span>${esc(s.name)}</span><span class="actions">
+      <button class="btn sec sm" data-spec-ren="${s.id}">تعديل الاسم</button><button class="btn danger sm" data-spec-del="${s.id}">حذف التخصص</button></span></h4>
+      <div class="lbl">الاستشاريين</div>${listEditor(`consultants.${s.id}`, "اسم الاستشاري")}
+      <div class="lbl" style="margin-top:10px">التشخيصات</div>${listEditor(`diagnoses.${s.id}`, "تشخيص")}
+      <div class="lbl" style="margin-top:10px">العمليات</div>${listEditor(`procedures.${s.id}`, "عملية")}
+    </div>`).join("");
+  const catBlocks = settings.categories.map((c, i) => `
+    <div class="sub-block"><h4><span>${esc(c.name)}</span><span class="actions">
+      <button class="btn sec sm" data-cat-ren="${i}">تعديل الاسم</button><button class="btn danger sm" data-cat-del="${i}">حذف</button></span></h4>
+      <div class="lbl">الغرف</div>${listEditor(`categories.${i}.rooms`, "اسم/رقم الغرفة")}</div>`).join("");
+  const finRows = settings.finance.map((f, i) => `<div class="actions" style="margin-bottom:6px">
+      <span class="item" style="background:#f1f4f8;border-radius:8px;padding:6px 10px;min-width:140px">${esc(f.name)}</span>
+      <label><input type="checkbox" data-fin-ent="${i}" ${f.entities ? "checked" : ""}> لها جهات (تظهر قائمة الجهات)</label>
+      <button class="btn sec sm" data-fin-ren="${i}">تعديل</button><button class="btn danger sm" data-fin-del="${i}">حذف</button></div>`).join("");
+  const learnedBySpec = settings.specialties.map((s) => {
+    const items = learned.filter((l) => l.specialtyId === s.id);
+    if (!items.length) return "";
+    return `<div class="sub-block"><h4>${esc(s.name)}</h4><div class="le">${items.map((l) => `<span class="item">${l.type === "dx" ? "تشخيص" : "عملية"}: ${esc(l.text)}
+      <button title="نقل للقائمة الرسمية" data-learn-move="${l.id}">⇧</button><button class="del" title="حذف" data-learn-del="${l.id}">×</button></span>`).join("")}</div></div>`;
+  }).join("");
+  $("#view").innerHTML = `
+  <details class="set" data-k="general" ${o("general")}><summary>عام</summary><div class="in">
+    <div class="field" style="max-width:420px"><label>اسم المستشفى</label>
+      <form class="le-add" id="hosp-form"><input type="text" value="${esc(settings.hospitalName)}"><button class="btn sm">حفظ</button></form></div>
+  </div></details>
+  <details class="set" data-k="specs" ${o("specs")}><summary>التخصصات (الاستشاريين / التشخيصات / العمليات)</summary><div class="in">
+    ${specBlocks}
+    <form class="le-add" id="spec-add"><input type="text" placeholder="اسم تخصص جديد"><button class="btn sm">إضافة تخصص</button></form>
+  </div></details>
+  <details class="set" data-k="cats" ${o("cats")}><summary>العمليات والغرف</summary><div class="in">
+    ${catBlocks}
+    <form class="le-add" id="cat-add"><input type="text" placeholder="نوع عمليات جديد"><button class="btn sm">إضافة</button></form>
+  </div></details>
+  <details class="set" data-k="pclass" ${o("pclass")}><summary>تصنيف العمليات</summary><div class="in">
+    <p class="hint">يظهر كقائمة منسدلة جنب كل عملية في شاشة التسجيل.</p>${listEditor("procClasses", "تصنيف")}
+  </div></details>
+  <details class="set" data-k="anes" ${o("anes")}><summary>التخدير</summary><div class="in">
+    <div class="lbl">أطباء التخدير</div>${listEditor("anesthetists", "اسم طبيب التخدير")}
+    <div class="lbl" style="margin-top:12px">أنواع التخدير</div>${listEditor("anesthesiaTypes")}
+  </div></details>
+  <details class="set" data-k="fin" ${o("fin")}><summary>المعاملات المالية وجهات التعاقد</summary><div class="in">
+    ${finRows}
+    <form class="le-add" id="fin-add" style="margin-bottom:14px"><input type="text" placeholder="نوع معاملة جديد"><button class="btn sm">إضافة</button></form>
+    <div class="lbl">جهات التعاقد</div>${listEditor("contractEntities", "اسم الجهة")}
+  </div></details>
+  <details class="set" data-k="comp" ${o("comp")}><summary>الشركات الخارجية والمستلزمات</summary><div class="in">
+    <div class="lbl">الشركات</div>${listEditor("companies", "اسم الشركة")}
+    <div class="lbl" style="margin-top:12px">أنواع المستلزمات</div>${listEditor("supplyTypes")}
+  </div></details>
+  <details class="set" data-k="loc" ${o("loc")}><summary>قادم من / خروج إلى</summary><div class="in">${listEditor("locations", "دور / قسم")}</div></details>
+  <details class="set" data-k="pp" ${o("pp")}><summary>أسباب التأجيل</summary><div class="in">${listEditor("postponeReasons", "سبب")}</div></details>
+  <details class="set" data-k="required" ${o("required")}><summary>الخانات الإجبارية في التسجيل</summary><div class="in">
+    <p class="hint">علّم على الخانة اللي لازم تتملي قبل الحفظ. اليوم واسم المريض وتمت/تأجيل إجبارية دايمًا.</p>
+    <div class="req-list">${REQUIRABLE_FIELDS.map(([k, label]) => `<label class="req-item"><input type="checkbox" data-reqf="${k}" ${settings.required[k] ? "checked" : ""}><span>${esc(label)}</span><b>${settings.required[k] ? "إجباري" : "اختياري"}</b></label>`).join("")}</div>
+  </div></details>
+  <details class="set" data-k="learned" ${o("learned")}><summary>تشخيصات وعمليات أضافها المستخدمون (${learned.length})</summary><div class="in">
+    <p class="hint">تظهر كاقتراحات أثناء الكتابة. ⇧ لنقلها للقائمة الرسمية، × لحذفها.</p>${learnedBySpec || '<span class="hint">لا يوجد</span>'}
+  </div></details>
+  <details class="set" data-k="users" ${o("users")}><summary>المستخدمين والصلاحيات</summary><div class="in" id="users-in"><div class="loading">…</div></div></details>`;
+  renderUsers();
+}
+async function renderUsers() {
+  const box = $("#users-in");
+  if (!box) return;
+  try {
+    usersCache = await api.listUsers();
+  } catch (e) {
+    box.innerHTML = `<div class="errors">${esc(e.message)}</div>`;
+    return;
+  }
+  box.innerHTML = `
+  <div class="table-wrap"><table class="users"><thead><tr><th>الاسم</th><th>المستخدم</th><th>الدور</th><th>يرى كل السجلات</th><th>الإحصائيات</th><th>التصدير</th><th>نشط</th></tr></thead>
+  <tbody>${usersCache.map((u) => `<tr style="cursor:default">
+    <td>${esc(u.name)}</td><td dir="ltr" style="text-align:end">${esc(u.username)}</td>
+    <td><select data-urole="${u.uid}">${opt("user", "مستخدم", u.role === "user")}${opt("admin", "أدمن", u.role === "admin")}</select></td>
+    ${["viewAll", "dashboard", "export"].map((p) => `<td><input type="checkbox" data-uperm="${u.uid}" data-p="${p}" ${u.role === "admin" || u.perms?.[p] ? "checked" : ""} ${u.role === "admin" ? "disabled" : ""}></td>`).join("")}
+    <td><input type="checkbox" data-uactive="${u.uid}" ${u.active ? "checked" : ""}></td></tr>`).join("")}</tbody></table></div>
+  <p class="hint">المستخدم العادي يضيف عمليات فقط ولا يعدّل ولا يحذف. لا يمكن تغيير كلمة مرور مستخدم آخر — كل مستخدم يغيّر كلمته من زر "كلمة المرور"، ولو نسيها: أوقف الحساب وأنشئ له اسم مستخدم جديد.</p>
+  <h4 style="margin:16px 0 8px">إضافة مستخدم</h4>
+  <form id="user-add" class="grid">
+    <div class="field"><label>الاسم</label><input type="text" name="name" required></div>
+    <div class="field"><label>اسم المستخدم</label><input type="text" name="username" required autocapitalize="off"></div>
+    <div class="field"><label>كلمة المرور</label><input type="text" name="password" required minlength="6"></div>
+    <div class="field"><label>الدور</label><select name="role">${opt("user", "مستخدم")}${opt("admin", "أدمن")}</select></div>
+    <div class="field"><label>الصلاحيات</label>
+      <label><input type="checkbox" name="viewAll"> يرى كل السجلات</label>
+      <label><input type="checkbox" name="dashboard"> الإحصائيات</label>
+      <label><input type="checkbox" name="export"> التصدير</label></div>
+    <div class="field" style="justify-content:end"><button class="btn">إضافة المستخدم</button></div>
+  </form>`;
+}
+function splitInput(v) {
+  return v.split(/[؛;\n]+/).map((x) => x.trim()).filter(Boolean);
+}
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button, [data-open], [data-go]");
+  if (!t) {
+    if (!e.target.closest(".tags")) document.querySelectorAll(".sugg").forEach((s) => s.hidden = true);
+    return;
+  }
+  const d = t.dataset;
+  if (d.go) return go(d.go);
+  if (d.act === "close-modal") return closeModal();
+  if (d.act === "logout") {
+    editingId = null;
+    form = blankForm();
+    return api.logout();
+  }
+  if (d.act === "pwd") {
+    modal(`<h3 style="margin-top:0">تغيير كلمة المرور</h3><form id="pwd-form" style="display:flex;flex-direction:column;gap:10px">
+      <div class="field"><label>كلمة المرور الجديدة</label><input type="password" name="p" minlength="6" required autocomplete="new-password"></div>
+      <div class="field"><label>تأكيد</label><input type="password" name="p2" minlength="6" required autocomplete="new-password"></div>
+      <button class="btn">حفظ</button></form>`);
+    return;
+  }
+  if (d.chip) return setChip(d.chip, d.val);
+  if (d.untag) {
+    if (d.untag === "procedures") form.procClasses.splice(+d.i, 1);
+    form[d.untag].splice(+d.i, 1);
+    return renderEntry();
+  }
+  if (d.addtag) {
+    const i = $(`[data-tag="${d.addtag}"]`);
+    return addTag(d.addtag, i.value);
+  }
+  if (d.sugg) return addTag(d.sugg, d.val);
+  if (d.act === "save") return saveForm();
+  if (d.act === "clear") {
+    if (confirm("مسح كل الخانات؟")) {
+      form = blankForm({ date: form.date });
+      formErrors = [];
+      renderEntry();
+    }
+    return;
+  }
+  if (d.act === "cancel-edit") {
+    editingId = null;
+    form = blankForm();
+    formErrors = [];
+    return go("list");
+  }
+  if (d.open) {
+    const o = listOps.find((x) => x.id === d.open) || (renderDaily.ops || []).find((x) => x.id === d.open);
+    if (o) modal(opDetails(o));
+    return;
+  }
+  if (d.edit) {
+    const o = listOps.find((x) => x.id === d.edit) || (renderDaily.ops || []).find((x) => x.id === d.edit);
+    closeModal();
+    editingId = o.id;
+    formErrors = [];
+    form = { ...blankForm(), ...structuredClone(o) };
+    form.procClasses = (form.procedures || []).map((_, i) => form.procClasses?.[i] || "");
+    view = "entry";
+    renderTabs();
+    renderEntry();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (d.del) {
+    if (!confirm("حذف هذا السجل نهائيًا؟ لا يمكن التراجع.")) return;
+    try {
+      await api.deleteOp(d.del);
+      closeModal();
+      toast("تم الحذف");
+      await go(view);
+    } catch (ex) {
+      toast(ex.message, true);
+    }
+    return;
+  }
+  if (d.act === "xlsx") return exportXlsx(filteredList(), `عمليات_${listF.from}_${listF.to}`);
+  if (d.act === "pdf") {
+    const rows = filteredList().slice().reverse();
+    const cols = [["date", "اليوم"], ["time", "الوقت"], ["patientName", "اسم المريض"], ["mrn", "الرقم الطبي"], ["specialty", "التخصص"], ["consultant", "الاستشاري"], ["diagnoses", "التشخيص"], ["procedures", "العملية"], ["procClasses", "تصنيف العملية"], ["room", "الغرفة"], ["anesthesiaType", "نوع التخدير"], ["finance", "المعاملة المالية"], ["from", "قادم من"], ["to", "خروج إلى"], ["status", "الحالة"], ["postponeReason", "سبب التأجيل"]];
+    return printTable(`سجل العمليات — ${settings.hospitalName}`, `من ${fmtDate(listF.from)} إلى ${fmtDate(listF.to)} — ${rows.length} سجل`, rows, cols);
+  }
+  if (d.act === "print-daily") return renderDaily.print();
+  if (d.act === "xlsx-daily") return exportXlsx(renderDaily.ops || [], `لستة_${dailyDate}`);
+  if (d.preset) {
+    dashF.preset = d.preset;
+    return renderDash();
+  }
+  if (d.leDel) {
+    const list = getPath(settings, d.leDel);
+    if (!confirm(`حذف "${list[+d.i]}"؟`)) return;
+    list.splice(+d.i, 1);
+    return persist("تم الحذف");
+  }
+  if (d.leRen) {
+    const list = getPath(settings, d.leRen);
+    const v = prompt("الاسم الجديد", list[+d.i]);
+    if (v && v.trim()) {
+      list[+d.i] = v.trim();
+      return persist();
+    }
+    return;
+  }
+  if (d.specRen) {
+    const s = settings.specialties.find((x) => x.id === d.specRen);
+    const v = prompt("اسم التخصص", s.name);
+    if (v && v.trim()) {
+      s.name = v.trim();
+      return persist();
+    }
+    return;
+  }
+  if (d.specDel) {
+    const s = settings.specialties.find((x) => x.id === d.specDel);
+    if (!confirm(`حذف تخصص "${s.name}" بكل قوائمه؟ (السجلات القديمة لن تتأثر)`)) return;
+    settings.specialties = settings.specialties.filter((x) => x.id !== s.id);
+    for (const k of ["consultants", "diagnoses", "procedures"]) delete settings[k][s.id];
+    return persist("تم الحذف");
+  }
+  if (d.catRen) {
+    const c = settings.categories[+d.catRen];
+    const v = prompt("الاسم", c.name);
+    if (v && v.trim()) {
+      c.name = v.trim();
+      return persist();
+    }
+    return;
+  }
+  if (d.catDel) {
+    if (!confirm(`حذف "${settings.categories[+d.catDel].name}"؟`)) return;
+    settings.categories.splice(+d.catDel, 1);
+    return persist("تم الحذف");
+  }
+  if (d.finRen) {
+    const f = settings.finance[+d.finRen];
+    const v = prompt("الاسم", f.name);
+    if (v && v.trim()) {
+      f.name = v.trim();
+      return persist();
+    }
+    return;
+  }
+  if (d.finDel) {
+    if (!confirm(`حذف "${settings.finance[+d.finDel].name}"؟`)) return;
+    settings.finance.splice(+d.finDel, 1);
+    return persist("تم الحذف");
+  }
+  if (d.learnDel || d.learnMove) {
+    const id = d.learnDel || d.learnMove;
+    const l = learned.find((x) => x.id === id);
+    try {
+      if (d.learnMove) {
+        const key = l.type === "dx" ? "diagnoses" : "procedures";
+        settings[key][l.specialtyId] = uniqueTerms([...settings[key][l.specialtyId] || [], l.text]);
+        await api.saveSettings(settings);
+      }
+      await api.deleteLearned(id);
+      learned = learned.filter((x) => x.id !== id);
+      toast(d.learnMove ? "تم النقل للقائمة الرسمية" : "تم الحذف");
+      renderSettings(["learned"]);
+    } catch (ex) {
+      toast(ex.message, true);
+    }
+  }
+});
+document.addEventListener("submit", async (e) => {
+  const f = e.target;
+  if (f.id === "pwd-form") {
+    e.preventDefault();
+    const { p, p2 } = Object.fromEntries(new FormData(f));
+    if (p !== p2) return toast("كلمتا المرور غير متطابقتين", true);
+    try {
+      await api.changePassword(p);
+      closeModal();
+      toast("تم تغيير كلمة المرور");
+    } catch (ex) {
+      toast(ex.message, true);
+    }
+    return;
+  }
+  if (f.dataset.leAdd) {
+    e.preventDefault();
+    const items = splitInput(f.querySelector("input").value);
+    if (!items.length) return;
+    const path = f.dataset.leAdd;
+    const parts = path.split(".");
+    const parent = getPath(settings, parts.slice(0, -1).join(".")) || settings;
+    const key = parts[parts.length - 1];
+    parent[key] = uniqueTerms([...parent[key] || [], ...items]);
+    return persist("تمت الإضافة");
+  }
+  if (f.id === "hosp-form") {
+    e.preventDefault();
+    settings.hospitalName = f.querySelector("input").value.trim();
+    await persist();
+    return renderShell();
+  }
+  if (f.id === "spec-add") {
+    e.preventDefault();
+    const name = f.querySelector("input").value.trim();
+    if (!name) return;
+    const id = slugId("sp");
+    settings.specialties.push({ id, name });
+    settings.consultants[id] = [];
+    settings.diagnoses[id] = [];
+    settings.procedures[id] = [];
+    return persist("تمت إضافة التخصص");
+  }
+  if (f.id === "cat-add") {
+    e.preventDefault();
+    const name = f.querySelector("input").value.trim();
+    if (!name) return;
+    settings.categories.push({ id: slugId("cat"), name, rooms: [] });
+    return persist("تمت الإضافة");
+  }
+  if (f.id === "fin-add") {
+    e.preventDefault();
+    const name = f.querySelector("input").value.trim();
+    if (!name) return;
+    settings.finance.push({ name, entities: false });
+    return persist("تمت الإضافة");
+  }
+  if (f.id === "user-add") {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(f));
+    const b = f.querySelector("button");
+    b.disabled = true;
+    try {
+      await api.createUser({
+        username: d.username,
+        password: d.password,
+        name: d.name,
+        role: d.role,
+        perms: { viewAll: !!d.viewAll, dashboard: !!d.dashboard, export: !!d.export }
+      });
+      toast("تمت إضافة المستخدم");
+      renderUsers();
+    } catch (ex) {
+      toast(ex.message, true);
+      b.disabled = false;
+    }
+  }
+});
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset.field) {
+    form[t.dataset.field] = t.value;
+    return;
+  }
+  if (t.dataset.tag) {
+    tagDraft[t.dataset.tag] = t.value;
+    return showSugg(t);
+  }
+  if (t.dataset.lf === "q") {
+    listF.q = t.value;
+    clearTimeout(t._d);
+    t._d = setTimeout(() => {
+      renderList();
+      const i = $('[data-lf="q"]');
+      i.focus();
+      i.setSelectionRange(i.value.length, i.value.length);
+    }, 250);
+  }
+});
+document.addEventListener("focusin", (e) => {
+  if (e.target.dataset?.tag && e.target.value.trim()) showSugg(e.target);
+});
+document.addEventListener("focusout", (e) => {
+  if (!e.target.dataset?.tag) return;
+  const box = e.target.closest(".tags")?.querySelector(".sugg");
+  setTimeout(() => {
+    if (box && !box.contains(document.activeElement)) box.hidden = true;
+  }, 200);
+});
+document.addEventListener("mousedown", (e) => {
+  if (e.target.closest(".sugg")) e.preventDefault();
+});
+document.addEventListener("keydown", (e) => {
+  const t = e.target;
+  if (t.dataset?.tag && e.key === "Enter") {
+    e.preventDefault();
+    const box = t.closest(".tags").querySelector(".sugg button");
+    const q = t.value.trim();
+    if (!q) return;
+    const first = box && !box.classList.contains("new") ? box.dataset.val : null;
+    addTag(t.dataset.tag, first && normalizeTerm(first).startsWith(normalizeTerm(q)) ? first : q);
+  }
+  if (e.key === "Escape") {
+    document.querySelectorAll(".sugg").forEach((s) => s.hidden = true);
+    if (!$("#modal").hidden) closeModal();
+  }
+});
+document.addEventListener("change", async (e) => {
+  const t = e.target;
+  if (t.dataset.field && t.tagName === "SELECT") {
+    form[t.dataset.field] = t.value;
+    return;
+  }
+  if (t.dataset.pclass !== void 0) {
+    form.procClasses[+t.dataset.pclass] = t.value;
+    t.classList.toggle("need", !t.value && !!rq("procClass"));
+    return;
+  }
+  if (t.dataset.lf && t.dataset.lf !== "q") {
+    listF[t.dataset.lf] = t.value;
+    if (t.dataset.lf === "specialtyId") listF.consultant = "";
+    if (t.dataset.lf === "from" || t.dataset.lf === "to") await loadList();
+    return renderList();
+  }
+  if (t.dataset.df) {
+    dashF[t.dataset.df] = t.value;
+    return renderDash();
+  }
+  if (t.dataset.reqf) {
+    settings.required[t.dataset.reqf] = t.checked;
+    return persist(t.checked ? "أصبحت إجبارية" : "أصبحت اختيارية");
+  }
+  if (t.dataset.finEnt !== void 0) {
+    settings.finance[+t.dataset.finEnt].entities = t.checked;
+    return persist();
+  }
+  const uid2 = t.dataset.urole || t.dataset.uperm || t.dataset.uactive;
+  if (uid2) {
+    const u = usersCache.find((x) => x.uid === uid2);
+    let patch;
+    if (t.dataset.urole) patch = { role: t.value };
+    else if (t.dataset.uperm) patch = { perms: { viewAll: false, dashboard: false, export: false, ...u.perms, [t.dataset.p]: t.checked } };
+    else patch = { active: t.checked };
+    try {
+      await api.updateUser(uid2, patch);
+      toast("تم الحفظ");
+    } catch (ex) {
+      toast(ex.message, true);
+    }
+    renderUsers();
+  }
+});
+$("#modal").addEventListener("click", (e) => {
+  if (e.target.id === "modal") closeModal();
+});
+</script>
 </body>
 </html>
