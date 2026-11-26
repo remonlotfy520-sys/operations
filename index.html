@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<!-- build 2026-11-25 23:23 -->
+<!-- build 2026-11-26 07:49 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>إدارة العمليات</title>
@@ -181,6 +181,9 @@ details.set > .in { padding: 0 14px 14px; }
   #print th, #print td { border: 1px solid #999; padding: 4px; }
   #print h3 { margin: 10px 0 4px; font-size: 13px; }
   #print tr { page-break-inside: avoid; }
+  #print .sig { display: flex; justify-content: space-around; gap: 20px; margin-top: 28px; page-break-inside: avoid; }
+  #print .sig-box { display: flex; flex-direction: column; gap: 14px; text-align: center; font-size: 12px; }
+  #print .sig-box b { font-size: 13px; }
 }
 </style>
 </head>
@@ -577,6 +580,7 @@ async function createFirebaseApi() {
     if (c.includes("email-already-in-use")) return new Error("اسم المستخدم موجود بالفعل");
     if (c.includes("weak-password")) return new Error("كلمة المرور ضعيفة (6 أحرف على الأقل)");
     if (c.includes("requires-recent-login")) return new Error("سجّل خروج ثم دخول مرة أخرى ثم أعد المحاولة");
+    if (c.includes("not-found")) return new Error("اطلب من الأدمن يحفظ الإعدادات مرة الأول");
     if (c.includes("permission-denied")) return new Error("غير مسموح لك بهذا الإجراء");
     if (c.includes("too-many-requests")) return new Error("محاولات كثيرة — انتظر قليلًا");
     return e instanceof Error ? e : new Error(String(e));
@@ -649,6 +653,10 @@ async function createFirebaseApi() {
     }),
     saveSettings: wrap(async (s) => {
       await setDoc(doc(db, "settings", "main"), s);
+    }),
+    // Only the consultants field changes, so the rules can allow it for users with that permission.
+    saveConsultants: wrap(async (c) => {
+      await updateDoc(doc(db, "settings", "main"), { consultants: c });
     }),
     listOps: wrap(async ({ from, to } = {}) => {
       const all = current2.role === "admin" || current2.perms?.viewAll;
@@ -808,6 +816,11 @@ var init_data_local = __esm({
         need(true);
         write("settings", s);
       },
+      async saveConsultants(c) {
+        need();
+        if (current.role !== "admin" && !current.perms?.consultants) throw new Error("غير مسموح");
+        write("settings", { ...read("settings", {}), consultants: c });
+      },
       async listOps({ from, to } = {}) {
         need();
         const all = read("ops", []);
@@ -934,6 +947,7 @@ var tagDraft = { diagnoses: "", procedures: "" };
 var listF = { from: monthStart(), to: todayISO(), specialtyId: "", categoryId: "", status: "", finance: "", procClass: "", q: "" };
 var listOps = [];
 var dailyDate = todayISO();
+var dailySpec = "";
 var dashF = { preset: "month", from: monthStart(), to: todayISO(), specialtyId: "" };
 function blankForm(keep = {}) {
   if (typeof tagDraft !== "undefined") {
@@ -1032,6 +1046,7 @@ function tabs() {
   const t = [["entry", editingId ? "تعديل عملية" : "تسجيل عملية"], ["list", "القائمة"], ["daily", "لستة اليوم"]];
   if (can("dashboard")) t.push(["dash", "الإحصائيات"]);
   if (isAdmin()) t.push(["settings", "الإعدادات"]);
+  else if (user?.perms?.consultants) t.push(["consultants", "الاستشاريين"]);
   return t;
 }
 function renderShell() {
@@ -1073,6 +1088,15 @@ async function go(v) {
     el.innerHTML = '<div class="loading">جاري التحميل…</div>';
     await renderDash();
   } else if (v === "settings") renderSettings();
+  else if (v === "consultants") {
+    el.innerHTML = '<div class="loading">جاري التحميل…</div>';
+    try {
+      settings = await api.getSettings();
+    } catch (e) {
+      toast(e.message, true);
+    }
+    renderConsultants();
+  }
   window.scrollTo(0, 0);
 }
 var spec = () => settings.specialties.find((s) => s.id === form.specialtyId);
@@ -1359,11 +1383,29 @@ function loadXLSX() {
   }));
   return xlsxLoading;
 }
-async function exportXlsx(rows, name) {
+function sigTitles(specId) {
+  const sp = settings.specialties.find((x) => x.id === specId);
+  return ["مدير العمليات", ...sp ? [`رئيس قسم ${sp.name}`] : [], "مدير المستشفى"];
+}
+function sigHtml(specId) {
+  return `<div class="sig">${sigTitles(specId).map((t) => `<div class="sig-box"><b>${esc(t)}</b>
+    <div>الاسم: ............................</div><div>التوقيع: ..........................</div></div>`).join("")}</div>`;
+}
+async function exportXlsx(rows, name, specId = "") {
   try {
     await loadXLSX();
     const X = window.XLSX;
     const ws = X.utils.json_to_sheet(rows.map(toRow), { header: EXPORT_COLUMNS.map((c) => c[1]) });
+    const titles = sigTitles(specId);
+    const step = Math.max(3, Math.floor(EXPORT_COLUMNS.length / titles.length));
+    const line = (f) => {
+      const r = [];
+      titles.forEach((t, i) => {
+        r[i * step] = f(t);
+      });
+      return r;
+    };
+    X.utils.sheet_add_aoa(ws, [[], [], line((t) => t), line(() => "الاسم: ...................."), [], line(() => "التوقيع: ....................")], { origin: -1 });
     ws["!cols"] = EXPORT_COLUMNS.map(([k]) => ({ wch: ["diagnoses", "procedures", "notes", "patientName"].includes(k) ? 30 : 14 }));
     const wb = X.utils.book_new();
     wb.Workbook = { Views: [{ RTL: true }] };
@@ -1373,13 +1415,14 @@ async function exportXlsx(rows, name) {
     toast(e.message, true);
   }
 }
-function printTable(title, meta, rows, cols) {
+function printTable(title, meta, rows, cols, specId = "") {
   $("#print").innerHTML = `<h2>${esc(title)}</h2><div class="meta">${meta}</div>
     <table><thead><tr>${cols.map((c) => `<th>${esc(c[1])}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((o) => {
     const r = toRow(o);
     return `<tr>${cols.map((c) => `<td>${esc(c[0] === "#" ? "" : r[c[1]])}</td>`).join("")}</tr>`;
-  }).join("")}</tbody></table>`;
+  }).join("")}</tbody></table>
+    ${sigHtml(specId)}`;
   setTimeout(() => window.print(), 50);
 }
 async function renderDaily() {
@@ -1389,6 +1432,7 @@ async function renderDaily() {
   } catch (e) {
     toast(e.message, true);
   }
+  if (dailySpec) ops = ops.filter((o) => o.specialtyId === dailySpec);
   ops.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const groups = [];
   for (const c of settings.categories) {
@@ -1405,7 +1449,8 @@ async function renderDaily() {
   const summary = `العدد: ${st.total} — تمت: ${st.done} — تأجيل: ${st.postponed}`;
   $("#view").innerHTML = `
   <div class="card actions" style="justify-content:space-between">
-    <div class="actions"><div class="field"><label>اليوم</label><input type="date" id="daily-date" value="${dailyDate}"></div></div>
+    <div class="actions"><div class="field"><label>اليوم</label><input type="date" id="daily-date" value="${dailyDate}"></div>
+      <div class="field"><label>التخصص</label><select id="daily-spec">${opt("", "كل التخصصات")}${settings.specialties.map((s) => opt(s.id, s.name, s.id === dailySpec)).join("")}</select></div></div>
     <div class="actions"><b>${summary}</b>
       ${ops.length ? `<button class="btn sm" data-act="print-daily">طباعة / PDF</button>${can("export") ? '<button class="btn sec sm" data-act="xlsx-daily">Excel</button>' : ""}` : ""}</div>
   </div>
@@ -1415,9 +1460,15 @@ async function renderDaily() {
     dailyDate = e.target.value || todayISO();
     renderDaily();
   };
+  $("#daily-spec").onchange = (e) => {
+    dailySpec = e.target.value;
+    renderDaily();
+  };
+  const specName = settings.specialties.find((x) => x.id === dailySpec)?.name;
   renderDaily.print = () => {
-    $("#print").innerHTML = `<h2>لستة العمليات اليومية — ${esc(settings.hospitalName)}</h2><div class="meta">${fmtDate(dailyDate)} — ${summary}</div>
-      ${groups.map((g) => `<h3>${esc(g.title)}</h3>${table(g)}`).join("")}`;
+    $("#print").innerHTML = `<h2>لستة العمليات اليومية — ${esc(settings.hospitalName)}</h2><div class="meta">${fmtDate(dailyDate)}${specName ? ` — قسم ${esc(specName)}` : ""} — ${summary}</div>
+      ${groups.map((g) => `<h3>${esc(g.title)}</h3>${table(g)}`).join("")}
+      ${sigHtml(dailySpec)}`;
     setTimeout(() => window.print(), 50);
   };
   renderDaily.ops = ops;
@@ -1521,15 +1572,28 @@ async function renderDash() {
   </div>`;
 }
 var getPath = (obj, path) => path.split(".").reduce((o, k) => o?.[k], obj);
-function listEditor(path, placeholder = "إضافة…") {
+function listEditor(path, placeholder = "إضافة…", rename = true) {
   const list = getPath(settings, path) || [];
   return `<div class="le">${list.map((x, i) => `<span class="item">${esc(x)}
-      <button title="تعديل الاسم" data-le-ren="${path}" data-i="${i}">✎</button>
+      ${rename ? `<button title="تعديل الاسم" data-le-ren="${path}" data-i="${i}">✎</button>` : ""}
       <button class="del" title="حذف" data-le-del="${path}" data-i="${i}">×</button></span>`).join("") || '<span class="hint">القائمة فارغة</span>'}</div>
     <form class="le-add" data-le-add="${path}"><input type="text" placeholder="${placeholder}"><button class="btn sm">إضافة</button></form>
     <span class="hint">يمكن إضافة أكثر من عنصر مرة واحدة بالفصل بينهم بـ ؛ أو سطر جديد</span>`;
 }
 async function persist(msg = "تم الحفظ") {
+  if (view === "consultants") {
+    try {
+      await api.saveConsultants(settings.consultants);
+      toast(msg);
+    } catch (e) {
+      toast(e.message, true);
+    }
+    try {
+      settings = await api.getSettings();
+    } catch {
+    }
+    return renderConsultants();
+  }
   try {
     await api.saveSettings(settings);
     toast(msg);
@@ -1539,6 +1603,10 @@ async function persist(msg = "تم الحفظ") {
   }
   const open = [...document.querySelectorAll("details.set[open]")].map((d) => d.dataset.k);
   renderSettings(open);
+}
+function renderConsultants() {
+  $("#view").innerHTML = `<p class="hint">أضف أو احذف أسماء الاستشاريين لكل تخصص. تظهر مباشرة في شاشة التسجيل.</p>
+  ${settings.specialties.map((s) => `<div class="card"><h3>${esc(s.name)}</h3>${listEditor(`consultants.${s.id}`, "اسم الاستشاري", false)}</div>`).join("")}`;
 }
 var usersCache = null;
 async function renderSettings(open = []) {
@@ -1615,11 +1683,11 @@ async function renderUsers() {
     return;
   }
   box.innerHTML = `
-  <div class="table-wrap"><table class="users"><thead><tr><th>الاسم</th><th>المستخدم</th><th>الدور</th><th>يرى كل السجلات</th><th>الإحصائيات</th><th>التصدير</th><th>نشط</th></tr></thead>
+  <div class="table-wrap"><table class="users"><thead><tr><th>الاسم</th><th>المستخدم</th><th>الدور</th><th>يرى كل السجلات</th><th>الإحصائيات</th><th>التصدير</th><th>إدارة الاستشاريين</th><th>نشط</th></tr></thead>
   <tbody>${usersCache.map((u) => `<tr style="cursor:default">
     <td>${esc(u.name)}</td><td dir="ltr" style="text-align:end">${esc(u.username)}</td>
     <td><select data-urole="${u.uid}">${opt("user", "مستخدم", u.role === "user")}${opt("admin", "أدمن", u.role === "admin")}</select></td>
-    ${["viewAll", "dashboard", "export"].map((p) => `<td><input type="checkbox" data-uperm="${u.uid}" data-p="${p}" ${u.role === "admin" || u.perms?.[p] ? "checked" : ""} ${u.role === "admin" ? "disabled" : ""}></td>`).join("")}
+    ${["viewAll", "dashboard", "export", "consultants"].map((p) => `<td><input type="checkbox" data-uperm="${u.uid}" data-p="${p}" ${u.role === "admin" || u.perms?.[p] ? "checked" : ""} ${u.role === "admin" ? "disabled" : ""}></td>`).join("")}
     <td><input type="checkbox" data-uactive="${u.uid}" ${u.active ? "checked" : ""}></td></tr>`).join("")}</tbody></table></div>
   <p class="hint">المستخدم العادي يضيف عمليات فقط ولا يعدّل ولا يحذف. لا يمكن تغيير كلمة مرور مستخدم آخر — كل مستخدم يغيّر كلمته من زر "كلمة المرور"، ولو نسيها: أوقف الحساب وأنشئ له اسم مستخدم جديد.</p>
   <h4 style="margin:16px 0 8px">إضافة مستخدم</h4>
@@ -1631,7 +1699,8 @@ async function renderUsers() {
     <div class="field"><label>الصلاحيات</label>
       <label><input type="checkbox" name="viewAll"> يرى كل السجلات</label>
       <label><input type="checkbox" name="dashboard"> الإحصائيات</label>
-      <label><input type="checkbox" name="export"> التصدير</label></div>
+      <label><input type="checkbox" name="export"> التصدير</label>
+      <label><input type="checkbox" name="consultants"> إدارة الاستشاريين</label></div>
     <div class="field" style="justify-content:end"><button class="btn">إضافة المستخدم</button></div>
   </form>`;
 }
@@ -1715,14 +1784,14 @@ document.addEventListener("click", async (e) => {
     }
     return;
   }
-  if (d.act === "xlsx") return exportXlsx(filteredList(), `عمليات_${listF.from}_${listF.to}`);
+  if (d.act === "xlsx") return exportXlsx(filteredList(), `عمليات_${listF.from}_${listF.to}`, listF.specialtyId);
   if (d.act === "pdf") {
     const rows = filteredList().slice().reverse();
     const cols = [["date", "اليوم"], ["time", "الوقت"], ["patientName", "اسم المريض"], ["mrn", "الرقم الطبي"], ["specialty", "التخصص"], ["consultant", "الاستشاري"], ["diagnoses", "التشخيص"], ["procedures", "العملية"], ["procClasses", "تصنيف العملية"], ["room", "الغرفة"], ["anesthesiaType", "نوع التخدير"], ["finance", "المعاملة المالية"], ["from", "قادم من"], ["to", "خروج إلى"], ["status", "الحالة"], ["postponeReason", "سبب التأجيل"]];
-    return printTable(`سجل العمليات — ${settings.hospitalName}`, `من ${fmtDate(listF.from)} إلى ${fmtDate(listF.to)} — ${rows.length} سجل`, rows, cols);
+    return printTable(`سجل العمليات — ${settings.hospitalName}`, `من ${fmtDate(listF.from)} إلى ${fmtDate(listF.to)} — ${rows.length} سجل${listF.specialtyId ? ` — قسم ${settings.specialties.find((x) => x.id === listF.specialtyId)?.name || ""}` : ""}`, rows, cols, listF.specialtyId);
   }
   if (d.act === "print-daily") return renderDaily.print();
-  if (d.act === "xlsx-daily") return exportXlsx(renderDaily.ops || [], `لستة_${dailyDate}`);
+  if (d.act === "xlsx-daily") return exportXlsx(renderDaily.ops || [], `لستة_${dailyDate}`, dailySpec);
   if (d.preset) {
     dashF.preset = d.preset;
     return renderDash();
@@ -1872,7 +1941,7 @@ document.addEventListener("submit", async (e) => {
         password: d.password,
         name: d.name,
         role: d.role,
-        perms: { viewAll: !!d.viewAll, dashboard: !!d.dashboard, export: !!d.export }
+        perms: { viewAll: !!d.viewAll, dashboard: !!d.dashboard, export: !!d.export, consultants: !!d.consultants }
       });
       toast("تمت إضافة المستخدم");
       renderUsers();
@@ -1965,7 +2034,7 @@ document.addEventListener("change", async (e) => {
     const u = usersCache.find((x) => x.uid === uid2);
     let patch;
     if (t.dataset.urole) patch = { role: t.value };
-    else if (t.dataset.uperm) patch = { perms: { viewAll: false, dashboard: false, export: false, ...u.perms, [t.dataset.p]: t.checked } };
+    else if (t.dataset.uperm) patch = { perms: { viewAll: false, dashboard: false, export: false, consultants: false, ...u.perms, [t.dataset.p]: t.checked } };
     else patch = { active: t.checked };
     try {
       await api.updateUser(uid2, patch);
