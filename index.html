@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<!-- build 2026-11-26 07:49 -->
+<!-- build 2026-11-27 10:20 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>إدارة العمليات</title>
@@ -136,6 +136,19 @@ details.set > .in { padding: 0 14px 14px; }
 .sub-block h4 { margin: 0 0 8px; font-size: 14px; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .users td, .users th { white-space: nowrap; }
 
+/* Specialty colours */
+.chip.spc { border-color: color-mix(in srgb, var(--c) 45%, #fff); }
+.chip.spc::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-inline-end: 6px; vertical-align: middle; }
+.chip.spc.on { background: color-mix(in srgb, var(--c) 24%, #fff); border-color: var(--c); color: var(--ink); }
+.tinted .card { background: color-mix(in srgb, var(--sp) 6%, #fff); border-inline-start: 4px solid color-mix(in srgb, var(--sp) 55%, #fff); }
+.tinted .card h3 { color: color-mix(in srgb, var(--sp) 70%, #1c2430); }
+.tinted .save-bar .btn:not(.sec) { background: color-mix(in srgb, var(--sp) 75%, #1c2430); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
+.sw { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; background: color-mix(in srgb, var(--c) 45%, #fff); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+.sw.on { box-shadow: 0 0 0 2px var(--c); }
+.sub-block { border-inline-start: 4px solid color-mix(in srgb, var(--c, #ccc) 55%, #fff); }
+.spec-title::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-inline-end: 6px; }
+
 /* Procedure + classification rows */
 .proc-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
 .proc-row { display: flex; align-items: center; gap: 8px; }
@@ -227,9 +240,11 @@ var init_config = __esm({
 // js/logic.js
 function withDefaults(s) {
   const out = structuredClone(DEFAULT_SETTINGS);
-  if (!s) return out;
-  for (const k of Object.keys(s)) out[k] = s[k];
-  out.required = { ...DEFAULT_SETTINGS.required, ...s.required || {} };
+  if (s) {
+    for (const k of Object.keys(s)) out[k] = s[k];
+    out.required = { ...DEFAULT_SETTINGS.required, ...s.required || {} };
+  }
+  out.specialties = out.specialties.map((sp, i) => sp.color ? sp : { ...sp, color: SPEC_COLORS[i % SPEC_COLORS.length] });
   for (const sp of out.specialties) {
     for (const key of ["consultants", "diagnoses", "procedures"]) {
       if (!out[key][sp.id]) out[key][sp.id] = [];
@@ -296,6 +311,7 @@ function validateOp(op, settings2) {
   if (r.notes && empty(op.notes)) e.push("اكتب الملاحظات");
   if (op.status !== "done" && op.status !== "postponed") e.push("حدد: تمت أم تأجيل");
   if (r.postponeReason && op.status === "postponed" && empty(op.postponeReason)) e.push("اكتب سبب التأجيل");
+  if (r.postponedBy && op.status === "postponed" && empty(op.postponedBy)) e.push("اختر من قام بالتأجيل");
   return e;
 }
 function cleanOp(op, settings2) {
@@ -324,7 +340,11 @@ function cleanOp(op, settings2) {
   }
   const fin = s.finance.find((f) => f.name === o.finance);
   if (!fin || !fin.entities) o.contractEntity = "";
-  if (o.status !== "postponed") o.postponeReason = "";
+  if (o.status !== "postponed") {
+    o.postponeReason = "";
+    o.postponedBy = "";
+  }
+  o.postponedBy = String(o.postponedBy || "");
   o.waitingList = !!o.waitingList;
   o.externalCompany = !!o.externalCompany;
   o.notes = String(o.notes || "").trim();
@@ -369,6 +389,7 @@ function computeStats(ops) {
     byProcClass: count(done_, (o) => o.procClasses || []),
     byDiagnosis: count(done_, (o) => o.diagnoses || []),
     postponeReasons: count(ops.filter((o) => o.status === "postponed"), (o) => o.postponeReason),
+    postponedBy: count(ops.filter((o) => o.status === "postponed"), (o) => o.postponedBy),
     postponedBySpecialty: count(ops.filter((o) => o.status === "postponed"), (o) => o.specialty)
   };
 }
@@ -435,7 +456,7 @@ function toRow(o) {
   }
   return r;
 }
-var REQUIRABLE_FIELDS, MAX_PROCEDURES, DEFAULT_SETTINGS, EXPORT_COLUMNS;
+var REQUIRABLE_FIELDS, MAX_PROCEDURES, SPEC_COLORS, DEFAULT_SETTINGS, EXPORT_COLUMNS;
 var init_logic = __esm({
   "js/logic.js"() {
     REQUIRABLE_FIELDS = [
@@ -457,9 +478,11 @@ var init_logic = __esm({
       ["from", "قادم من", false],
       ["to", "خروج إلى", false],
       ["postponeReason", "سبب التأجيل — عند التأجيل", true],
+      ["postponedBy", "من قام بالتأجيل — عند التأجيل", true],
       ["notes", "ملاحظات", false]
     ];
     MAX_PROCEDURES = 3;
+    SPEC_COLORS = ["#4C9BE8", "#2FB57C", "#E07AA8", "#8E7CE0", "#E3A33B", "#3BB3C3", "#E36F5A", "#7FA33B", "#C27BD1", "#5C7FD6", "#D98E4A", "#4AA88F"];
     DEFAULT_SETTINGS = {
       procClasses: ["صغرى", "متوسطة", "كبرى", "مهارة", "ذات طابع", "متقدمة"],
       required: Object.fromEntries(REQUIRABLE_FIELDS.map(([k, , d]) => [k, d])),
@@ -509,6 +532,7 @@ var init_logic = __esm({
       companies: [],
       supplyTypes: ["شرائح ومسامير", "مفاصل"],
       locations: ["الدور الثالث", "الدور الرابع اقتصادي", "جراحة", "طوارئ", "رعاية"],
+      postponers: ["الجراح", "التخدير", "المريض", "إدارة المستشفى", "التمريض"],
       postponeReasons: ["عدم لياقة المريض", "عدم توفر مستلزمات", "عدم توفر سرير رعاية", "رفض المريض", "ضيق الوقت"]
     };
     EXPORT_COLUMNS = [
@@ -535,6 +559,7 @@ var init_logic = __esm({
       ["to", "خروج إلى"],
       ["status", "الحالة"],
       ["postponeReason", "سبب التأجيل"],
+      ["postponedBy", "من قام بالتأجيل"],
       ["notes", "ملاحظات"],
       ["createdByName", "سجّلها"]
     ];
@@ -978,7 +1003,8 @@ function blankForm(keep = {}) {
     to: "",
     notes: "",
     status: "done",
-    postponeReason: ""
+    postponeReason: "",
+    postponedBy: ""
   };
 }
 form = blankForm();
@@ -1076,6 +1102,8 @@ async function go(v) {
   view = v;
   renderTabs();
   const el = $("#view");
+  el.classList.remove("tinted");
+  el.style.removeProperty("--sp");
   if (v === "entry") renderEntry();
   else if (v === "list") {
     el.innerHTML = '<div class="loading">جاري التحميل…</div>';
@@ -1148,7 +1176,7 @@ function renderEntry() {
   </div></div>
 
   <div class="card"><h3>التخصص والفريق</h3>
-    <div class="field"><label class="${rq("specialtyId")}">التخصص</label>${chips("specialtyId", settings.specialties.map((x) => [x.id, x.name]))}</div>
+    <div class="field"><label class="${rq("specialtyId")}">التخصص</label><div class="chips">${settings.specialties.map((x) => `<button type="button" class="chip spc ${form.specialtyId === x.id ? "on" : ""}" style="--c:${esc(x.color)}" data-chip="specialtyId" data-val="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div></div>
     <div class="grid" style="margin-top:12px">
       <div class="field"><label class="${rq("consultant")}">الاستشاري</label>${s ? select("consultant", settings.consultants[s.id] || []) : "<select disabled><option>اختر التخصص أولًا</option></select>"}
         ${s && !(settings.consultants[s.id] || []).length ? '<span class="hint">لا يوجد استشاريين لهذا التخصص — أضفهم من الإعدادات</span>' : ""}</div>
@@ -1185,11 +1213,12 @@ function renderEntry() {
       <div class="field"><label class="${rq("from")}">قادم من</label>${select("from", settings.locations)}</div>
       <div class="field"><label class="${rq("to")}">خروج إلى</label>${select("to", settings.locations)}</div>
     </div>
-    <div class="field" style="margin-top:12px"><label class="req">الحالة</label>${chips("status", [["done", "تمت"], ["postponed", "تأجيل"]], (v) => v === "done" ? "ok" : "bad")}</div>
+    <div class="field" style="margin-top:12px"><label class="req">الحالة</label>${chips("status", [["done", "تمت"], ["postponed", "تأجيل"]], (v2) => v2 === "done" ? "ok" : "bad")}</div>
     ${form.status === "postponed" ? `<div class="field" style="margin-top:12px;max-width:520px"><label class="${rq("postponeReason")}">سبب التأجيل</label>
       <input type="text" data-field="postponeReason" list="pp-reasons" value="${esc(form.postponeReason)}" placeholder="اختر أو اكتب السبب">
       <datalist id="pp-reasons">${settings.postponeReasons.map((r) => opt(r)).join("")}</datalist>
-      ${chips("postponeReason", settings.postponeReasons.map((r) => [r, r]))}</div>` : ""}
+      ${chips("postponeReason", settings.postponeReasons.map((r) => [r, r]))}</div>
+    <div class="field" style="margin-top:12px;max-width:320px"><label class="${rq("postponedBy")}">من قام بالتأجيل</label>${select("postponedBy", settings.postponers)}</div>` : ""}
     <div class="field" style="margin-top:12px"><label class="${rq("notes")}">ملاحظات</label><textarea data-field="notes">${esc(form.notes)}</textarea></div>
   </div>
 
@@ -1197,6 +1226,10 @@ function renderEntry() {
     <button class="btn" data-act="save" ${saving ? "disabled" : ""}>${editingId ? "حفظ التعديل" : "حفظ العملية"}</button>
     ${editingId ? '<button class="btn sec" data-act="cancel-edit">إلغاء</button>' : '<button class="btn sec" data-act="clear" style="flex:0 0 auto">مسح الخانات</button>'}
   </div>`;
+  const v = $("#view");
+  v.classList.toggle("tinted", !!s);
+  if (s) v.style.setProperty("--sp", s.color);
+  else v.style.removeProperty("--sp");
   if (focusTag) {
     const i = $(`[data-tag="${focusTag}"]`);
     if (i) i.focus();
@@ -1226,7 +1259,10 @@ function setChip(field, raw) {
     form.company = "";
     form.supplyType = "";
   }
-  if (field === "status" && v === "done") form.postponeReason = "";
+  if (field === "status" && v === "done") {
+    form.postponeReason = "";
+    form.postponedBy = "";
+  }
   renderEntry();
 }
 function pushTerm(key, t) {
@@ -1445,7 +1481,7 @@ async function renderDaily() {
   if (rest.length) groups.push({ title: "أخرى", ops: rest });
   const st = computeStats(ops);
   const table = (g) => `<table><thead><tr><th>م</th><th>الوقت</th><th>اسم المريض</th><th>الرقم الطبي</th><th>التخصص</th><th>الاستشاري</th><th>التشخيص</th><th>العملية</th><th>التخدير</th><th>المعاملة</th><th>الحالة</th></tr></thead>
-    <tbody>${g.ops.map((o, i) => `<tr data-open="${o.id}"><td>${i + 1}</td><td>${esc(o.time)}</td><td>${esc(o.patientName)}</td><td>${esc(o.mrn)}</td><td>${esc(o.specialty)}</td><td>${esc(o.consultant)}</td><td>${esc((o.diagnoses || []).join("، "))}</td><td>${esc(procText(o, "، "))}</td><td>${esc(o.anesthesiaType)}</td><td>${esc(o.finance)}</td><td>${o.status === "done" ? "تمت" : "تأجيل" + (o.postponeReason ? " — " + esc(o.postponeReason) : "")}</td></tr>`).join("")}</tbody></table>`;
+    <tbody>${g.ops.map((o, i) => `<tr data-open="${o.id}"><td>${i + 1}</td><td>${esc(o.time)}</td><td>${esc(o.patientName)}</td><td>${esc(o.mrn)}</td><td>${esc(o.specialty)}</td><td>${esc(o.consultant)}</td><td>${esc((o.diagnoses || []).join("، "))}</td><td>${esc(procText(o, "، "))}</td><td>${esc(o.anesthesiaType)}</td><td>${esc(o.finance)}</td><td>${o.status === "done" ? "تمت" : "تأجيل" + (o.postponeReason ? " — " + esc(o.postponeReason) : "") + (o.postponedBy ? " (" + esc(o.postponedBy) + ")" : "")}</td></tr>`).join("")}</tbody></table>`;
   const summary = `العدد: ${st.total} — تمت: ${st.done} — تأجيل: ${st.postponed}`;
   $("#view").innerHTML = `
   <div class="card actions" style="justify-content:space-between">
@@ -1568,6 +1604,7 @@ async function renderDash() {
     ${bars("أكثر العمليات", st.byProcedure, 10)}
     ${bars("أكثر التشخيصات", st.byDiagnosis, 10)}
     ${bars("أسباب التأجيل", st.postponeReasons)}
+    ${bars("التأجيل حسب من قام به", st.postponedBy)}
     ${bars("التأجيل حسب التخصص", st.postponedBySpecialty)}
   </div>`;
 }
@@ -1612,9 +1649,10 @@ var usersCache = null;
 async function renderSettings(open = []) {
   const o = (k) => open.includes(k) ? "open" : "";
   const specBlocks = settings.specialties.map((s) => `
-    <div class="sub-block"><h4><span>${esc(s.name)}</span><span class="actions">
+    <div class="sub-block" style="--c:${esc(s.color)}"><h4><span class="spec-title">${esc(s.name)}</span><span class="actions">
       <button class="btn sec sm" data-spec-ren="${s.id}">تعديل الاسم</button><button class="btn danger sm" data-spec-del="${s.id}">حذف التخصص</button></span></h4>
-      <div class="lbl">الاستشاريين</div>${listEditor(`consultants.${s.id}`, "اسم الاستشاري")}
+      <div class="lbl">اللون</div><div class="swatches">${SPEC_COLORS.map((c) => `<button type="button" class="sw ${c === s.color ? "on" : ""}" style="--c:${c}" data-spec-color="${s.id}" data-c="${c}" aria-label="لون"></button>`).join("")}</div>
+      <div class="lbl" style="margin-top:10px">الاستشاريين</div>${listEditor(`consultants.${s.id}`, "اسم الاستشاري")}
       <div class="lbl" style="margin-top:10px">التشخيصات</div>${listEditor(`diagnoses.${s.id}`, "تشخيص")}
       <div class="lbl" style="margin-top:10px">العمليات</div>${listEditor(`procedures.${s.id}`, "عملية")}
     </div>`).join("");
@@ -1662,7 +1700,9 @@ async function renderSettings(open = []) {
     <div class="lbl" style="margin-top:12px">أنواع المستلزمات</div>${listEditor("supplyTypes")}
   </div></details>
   <details class="set" data-k="loc" ${o("loc")}><summary>قادم من / خروج إلى</summary><div class="in">${listEditor("locations", "دور / قسم")}</div></details>
-  <details class="set" data-k="pp" ${o("pp")}><summary>أسباب التأجيل</summary><div class="in">${listEditor("postponeReasons", "سبب")}</div></details>
+  <details class="set" data-k="pp" ${o("pp")}><summary>التأجيل (الأسباب ومن قام بالتأجيل)</summary><div class="in">
+    <div class="lbl">أسباب التأجيل</div>${listEditor("postponeReasons", "سبب")}
+    <div class="lbl" style="margin-top:12px">من قام بالتأجيل</div>${listEditor("postponers", "جهة")}</div></details>
   <details class="set" data-k="required" ${o("required")}><summary>الخانات الإجبارية في التسجيل</summary><div class="in">
     <p class="hint">علّم على الخانة اللي لازم تتملي قبل الحفظ. اليوم واسم المريض وتمت/تأجيل إجبارية دايمًا.</p>
     <div class="req-list">${REQUIRABLE_FIELDS.map(([k, label]) => `<label class="req-item"><input type="checkbox" data-reqf="${k}" ${settings.required[k] ? "checked" : ""}><span>${esc(label)}</span><b>${settings.required[k] ? "إجباري" : "اختياري"}</b></label>`).join("")}</div>
@@ -1787,7 +1827,7 @@ document.addEventListener("click", async (e) => {
   if (d.act === "xlsx") return exportXlsx(filteredList(), `عمليات_${listF.from}_${listF.to}`, listF.specialtyId);
   if (d.act === "pdf") {
     const rows = filteredList().slice().reverse();
-    const cols = [["date", "اليوم"], ["time", "الوقت"], ["patientName", "اسم المريض"], ["mrn", "الرقم الطبي"], ["specialty", "التخصص"], ["consultant", "الاستشاري"], ["diagnoses", "التشخيص"], ["procedures", "العملية"], ["procClasses", "تصنيف العملية"], ["room", "الغرفة"], ["anesthesiaType", "نوع التخدير"], ["finance", "المعاملة المالية"], ["from", "قادم من"], ["to", "خروج إلى"], ["status", "الحالة"], ["postponeReason", "سبب التأجيل"]];
+    const cols = [["date", "اليوم"], ["time", "الوقت"], ["patientName", "اسم المريض"], ["mrn", "الرقم الطبي"], ["specialty", "التخصص"], ["consultant", "الاستشاري"], ["diagnoses", "التشخيص"], ["procedures", "العملية"], ["procClasses", "تصنيف العملية"], ["room", "الغرفة"], ["anesthesiaType", "نوع التخدير"], ["finance", "المعاملة المالية"], ["from", "قادم من"], ["to", "خروج إلى"], ["status", "الحالة"], ["postponeReason", "سبب التأجيل"], ["postponedBy", "من قام بالتأجيل"]];
     return printTable(`سجل العمليات — ${settings.hospitalName}`, `من ${fmtDate(listF.from)} إلى ${fmtDate(listF.to)} — ${rows.length} سجل${listF.specialtyId ? ` — قسم ${settings.specialties.find((x) => x.id === listF.specialtyId)?.name || ""}` : ""}`, rows, cols, listF.specialtyId);
   }
   if (d.act === "print-daily") return renderDaily.print();
@@ -1819,6 +1859,10 @@ document.addEventListener("click", async (e) => {
       return persist();
     }
     return;
+  }
+  if (d.specColor) {
+    settings.specialties.find((x) => x.id === d.specColor).color = d.c;
+    return persist("تم تغيير اللون");
   }
   if (d.specDel) {
     const s = settings.specialties.find((x) => x.id === d.specDel);
@@ -1910,7 +1954,7 @@ document.addEventListener("submit", async (e) => {
     const name = f.querySelector("input").value.trim();
     if (!name) return;
     const id = slugId("sp");
-    settings.specialties.push({ id, name });
+    settings.specialties.push({ id, name, color: SPEC_COLORS[settings.specialties.length % SPEC_COLORS.length] });
     settings.consultants[id] = [];
     settings.diagnoses[id] = [];
     settings.procedures[id] = [];
